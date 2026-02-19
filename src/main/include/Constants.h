@@ -27,8 +27,8 @@
 namespace DriveConstants {
 // Driving Parameters - Note that these are not the maximum capable speeds of
 // the robot, rather the allowed maximum speeds
-constexpr units::meters_per_second_t kMaxSpeed = 4.8_mps;
-constexpr units::radians_per_second_t kMaxAngularSpeed{2 * std::numbers::pi};
+constexpr units::meters_per_second_t kMaxSpeed = 1_mps;
+constexpr units::radians_per_second_t kMaxAngularSpeed{0.5 * std::numbers::pi};
 
 constexpr double kDirectionSlewRate = 1.2;   // radians per second
 constexpr double kMagnitudeSlewRate = 1.8;   // percent per second (1 = 100%)
@@ -36,36 +36,37 @@ constexpr double kRotationalSlewRate = 2.0;  // percent per second (1 = 100%)
 
 // Chassis configuration
 constexpr units::meter_t kTrackWidth =
-    0.6731_m;  // Distance between centers of right and left wheels on robot
+    0.617_m;  // Distance between centers of right and left wheels on robot
 constexpr units::meter_t kWheelBase =
-    0.6731_m;  // Distance between centers of front and back wheels on robot
+    0.617_m;  // Distance between centers of front and back wheels on robot
 
 // Angular offsets of the modules relative to the chassis in radians
-constexpr double kFrontLeftChassisAngularOffset = -std::numbers::pi / 2;
-constexpr double kFrontRightChassisAngularOffset = 0;
-constexpr double kRearLeftChassisAngularOffset = std::numbers::pi;
-constexpr double kRearRightChassisAngularOffset = std::numbers::pi / 2;
+constexpr double kFrontLeftChassisAngularOffset = 5.648;
+constexpr double kFrontRightChassisAngularOffset = 3.256;
+constexpr double kRearLeftChassisAngularOffset = 4.248;
+constexpr double kRearRightChassisAngularOffset = 3.459;
 
 // SPARK MAX CAN IDs
-constexpr int kFrontLeftDrivingCanId = 11;
-constexpr int kRearLeftDrivingCanId = 13;
-constexpr int kFrontRightDrivingCanId = 15;
-constexpr int kRearRightDrivingCanId = 17;
+constexpr int kFrontLeftDrivingCanId = 12;
+constexpr int kRearLeftDrivingCanId = 11;
+constexpr int kFrontRightDrivingCanId = 13;
+constexpr int kRearRightDrivingCanId = 14;
 
-constexpr int kFrontLeftTurningCanId = 10;
-constexpr int kRearLeftTurningCanId = 12;
-constexpr int kFrontRightTurningCanId = 14;
-constexpr int kRearRightTurningCanId = 16;
+constexpr int kFrontLeftTurningCanId = 16;
+constexpr int kRearLeftTurningCanId = 15;
+constexpr int kFrontRightTurningCanId = 17;
+constexpr int kRearRightTurningCanId = 18;
+
+constexpr int kIntakeCanID = 23;
 }  // namespace DriveConstants
 
 namespace ModuleConstants {
 // The MAXSwerve module can be configured with one of three pinion gears: 12T,
 // 13T, or 14T. This changes the drive speed of the module (a pinion gear with
 // more teeth will result in a robot that drives faster).
-constexpr int kDrivingMotorPinionTeeth = 14;
-
+constexpr int kDrivingMotorPinionTeeth = 13;
 // Calculations required for driving motor conversion factors and feed forward
-constexpr double kDrivingMotorFreeSpeedRps =
+constexpr double kDrivingMotorFreeSpeedRps = 
     5676.0 / 60;  // NEO free speed is 5676 RPM
 constexpr units::meter_t kWheelDiameter = 0.0762_m;
 constexpr units::meter_t kWheelCircumference =
@@ -95,5 +96,5 @@ extern const frc::TrapezoidProfile<units::radians>::Constraints
 
 namespace OIConstants {
 constexpr int kDriverControllerPort = 0;
-constexpr double kDriveDeadband = 0.05;
+constexpr double kDriveDeadband = 0.1;
 }  // namespace OIConstants
