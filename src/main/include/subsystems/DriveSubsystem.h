@@ -120,4 +120,6 @@ class DriveSubsystem : public frc2::SubsystemBase {
   // Odometry class for tracking robot pose
   // 4 defines the number of modules
   frc::SwerveDriveOdometry<4> m_odometry;
+
+  frc::Rotation2d GetRotation2d() const;
 };

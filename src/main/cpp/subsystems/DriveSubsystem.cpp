@@ -1,21 +1,25 @@
 #include "subsystems/DriveSubsystem.h"
+
 #include <frc/DriverStation.h>
 #include <frc/geometry/Rotation2d.h>
 #include <hal/FRCUsageReporting.h>
 #include <units/angle.h>
 #include <units/angular_velocity.h>
 #include <units/velocity.h>
+#include <frc/kinematics/ChassisSpeeds.h>
+#include <frc/geometry/Rotation2d.h>
 
 #include <fmt/core.h>
-#include "LimelightHelpers.h"
 
 #include "Constants.h"
+#include "LimelightHelpers.h"
 
 using namespace DriveConstants;
 
+// File-local state (avoid global symbol collisions across cpp files)
+static std::string g_lastLLMessage{};
+static int g_printCounter = 0;
 
-std::string g_lastLLMessage = "";
-int g_printCounter = 0; // for rate limiting
 DriveSubsystem::DriveSubsystem()
     : m_frontLeft{kFrontLeftDrivingCanId, kFrontLeftTurningCanId,
                   kFrontLeftChassisAngularOffset},
@@ -35,9 +39,6 @@ DriveSubsystem::DriveSubsystem()
              HALUsageReporting::kRobotDriveSwerve_MaxSwerve);
 }
 
-
-std::string g_lastLLMessage;
-  int g_printCounter = 0;
 
 //Update() in Unity
 void DriveSubsystem::Periodic() {
@@ -65,20 +66,19 @@ void DriveSubsystem::Periodic() {
       0.0, 0.0    // roll, rollRate
   );
 
-  // Pose estimate
   auto ll = LimelightHelpers::getBotPoseEstimate_wpiBlue_MegaTag2("limelight");
 
   if (ll.tagCount > 0) {
-    static int counter = 0;
-    if ((++counter % 10) == 0) {
+    static int posePrintCounter = 0;
+    if ((++posePrintCounter % 10) == 0) {
       PrintPoseEstimate(ll);
     }
   }
 
   // Simple turn hint from tx
   constexpr double kDeadbandDeg = 1.5;
-  bool hasTarget = LimelightHelpers::getTV("limelight");
-  double tx = hasTarget ? LimelightHelpers::getTX("limelight") : 0.0;
+  const bool hasTarget = LimelightHelpers::getTV("limelight");
+  const double tx = hasTarget ? LimelightHelpers::getTX("limelight") : 0.0;
 
   std::string direction = "No target";
   if (hasTarget) {
@@ -87,17 +87,25 @@ void DriveSubsystem::Periodic() {
     else direction = "Aligned";
   }
 
-  std::string msg = fmt::format("LL tx={:.2f} deg | dir={}", tx, direction);
+  const std::string msg = fmt::format("LL tv={} tx={:.2f} deg | dir={}",
+                                      hasTarget ? 1 : 0, tx, direction);
 
-  g_printCounter++;
-  bool timeToPrint = (g_printCounter % 10) == 0;
-  bool changed = (msg != g_lastLLMessage);
+  // Rate limit prints to not spam the DS console, but still print instantly on change.
+  ++g_printCounter;
+  const bool timeToPrint = (g_printCounter % 10) == 0;
+  const bool changed = (msg != g_lastLLMessage);
 
   if (changed || timeToPrint) {
-    fmt::print("ERROR OCCURED WITH TARGETING -- rion"); // enable output
+    fmt::print("{}\n", msg);
     g_lastLLMessage = msg;
   }
 }
+
+frc::Rotation2d DriveSubsystem::GetRotation2d() const {
+  return frc::Rotation2d{
+      units::degree_t{m_gyro.GetAngle(frc::ADIS16470_IMU::IMUAxis::kZ)}};
+}
+
 void DriveSubsystem::PrintPoseEstimate(const LimelightHelpers::PoseEstimate& ll) {
   fmt::print(
       "\n--- Limelight Pose ---\n"
@@ -111,9 +119,37 @@ void DriveSubsystem::PrintPoseEstimate(const LimelightHelpers::PoseEstimate& ll)
       ll.pose.X().value(),
       ll.pose.Y().value(),
       ll.pose.Rotation().Degrees().value(),
-      ll.latency,               
+      ll.latency,
       ll.tagCount,
-      ll.avgTagDist,                
-      ll.timestampSeconds.value()    // <-- units::second_t
-  );
+      ll.avgTagDist,
+      ll.timestampSeconds.value());
+}
+
+
+void DriveSubsystem::Drive(units::meters_per_second_t xSpeed,
+                           units::meters_per_second_t ySpeed,
+                           units::radians_per_second_t rot,
+                           bool fieldRelative) {
+  frc::ChassisSpeeds speeds =
+      fieldRelative
+          ? frc::ChassisSpeeds::FromFieldRelativeSpeeds(xSpeed, ySpeed, rot,
+                                                        GetRotation2d())
+          : frc::ChassisSpeeds{xSpeed, ySpeed, rot};
+
+  auto states = kDriveKinematics.ToSwerveModuleStates(speeds);
+  kDriveKinematics.DesaturateWheelSpeeds(&states, kMaxSpeed);
+
+  // Must match kDriveKinematics module order (commonly FL, FR, RL, RR)
+  m_frontLeft.SetDesiredState(states[0]);
+  m_frontRight.SetDesiredState(states[1]);
+  m_rearLeft.SetDesiredState(states[2]);
+  m_rearRight.SetDesiredState(states[3]);
+}
+
+void DriveSubsystem::SetX() {
+  // "X" lock to resist being pushed
+  m_frontLeft.SetDesiredState({0_mps, frc::Rotation2d{45_deg}});
+  m_frontRight.SetDesiredState({0_mps, frc::Rotation2d{-45_deg}});
+  m_rearLeft.SetDesiredState({0_mps, frc::Rotation2d{-45_deg}});
+  m_rearRight.SetDesiredState({0_mps, frc::Rotation2d{45_deg}});
 }
