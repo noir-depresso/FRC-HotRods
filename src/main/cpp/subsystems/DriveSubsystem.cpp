@@ -10,6 +10,9 @@
 #include <units/angular_velocity.h>
 #include <units/velocity.h>
 
+#include <fmt/core.h>   // or <iostream>
+#include "LimelightHelpers.h"
+
 #include "Constants.h"
 
 using namespace DriveConstants;
@@ -40,6 +43,20 @@ void DriveSubsystem::Periodic() {
                         m_gyro.GetAngle(frc::ADIS16470_IMU::IMUAxis::kZ)}),
                     {m_frontLeft.GetPosition(), m_rearLeft.GetPosition(),
                      m_frontRight.GetPosition(), m_rearRight.GetPosition()});
+
+  // Get Limelight pose
+  auto ll = LimelightHelpers::getBotPoseEstimate_wpiBlue_MegaTag2("limelight");
+
+  // Only print if valid target
+  if (ll.tagCount > 0) {
+
+    static int counter = 0;
+    counter++;
+
+    if (counter % 10 == 0) {   // print every 200ms instead of 20ms
+      PrintPoseEstimate(ll);
+    }
+  }
 }
 
 void DriveSubsystem::Drive(units::meters_per_second_t xSpeed,
@@ -120,4 +137,25 @@ void DriveSubsystem::ResetOdometry(frc::Pose2d pose) {
       {m_frontLeft.GetPosition(), m_frontRight.GetPosition(),
        m_rearLeft.GetPosition(), m_rearRight.GetPosition()},
       pose);
+}
+
+void DriveSubsystem::PrintPoseEstimate(
+    const LimelightHelpers::PoseEstimate& ll) {
+
+  fmt::print(
+      "\n--- Limelight Pose ---\n"
+      "X: {:.3f} m\n"
+      "Y: {:.3f} m\n"
+      "Rot: {:.2f} deg\n"
+      "Latency: {:.1f} ms\n"
+      "TagCount: {}\n"
+      "AvgTagDist: {:.2f} m\n"
+      "Timestamp: {:.3f} s\n\n",
+      ll.pose.X().value(),
+      ll.pose.Y().value(),
+      ll.pose.Rotation().Degrees().value(),
+      ll.latencyMs,
+      ll.tagCount,
+      ll.avgTagDistMeters,
+      ll.timestampSeconds);
 }

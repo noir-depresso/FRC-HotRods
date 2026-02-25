@@ -33,6 +33,6 @@ void IntakeSubsystem::SetPercent(double percent) {
   m_motor.Set(percent);
 }
 
-void IntakeSubsystem::In()  { SetPercent(+0.45); } // start here, tune later
+void IntakeSubsystem::In()  { SetPercent(+0.675); } // start here, tune later
 void IntakeSubsystem::Out() { SetPercent(-0.35); } // usually slower outtake
 void IntakeSubsystem::Stop(){ m_motor.StopMotor(); }

@@ -16,6 +16,8 @@
 #include "Constants.h"
 #include "MAXSwerveModule.h"
 
+#include "LimelightHelpers.h"
+
 class DriveSubsystem : public frc2::SubsystemBase {
  public:
   DriveSubsystem();
@@ -99,6 +101,9 @@ class DriveSubsystem : public frc2::SubsystemBase {
                          DriveConstants::kTrackWidth / 2},
       frc::Translation2d{-DriveConstants::kWheelBase / 2,
                          -DriveConstants::kTrackWidth / 2}};
+
+  void PrintPoseEstimate(
+    const LimelightHelpers::PoseEstimate& ll);
 
  private:
   // Components (e.g. motor controllers and sensors) should generally be
