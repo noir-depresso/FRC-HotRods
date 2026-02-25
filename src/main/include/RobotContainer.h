@@ -4,17 +4,9 @@
 
 #pragma once
 
-//#include <frc/XboxController.h>
 #include <frc/GenericHID.h>
-#include <frc/controller/PIDController.h>
-#include <frc/controller/ProfiledPIDController.h>
 #include <frc/smartdashboard/SendableChooser.h>
 #include <frc2/command/Command.h>
-#include <frc2/command/InstantCommand.h>
-#include <frc2/command/PIDCommand.h>
-#include <frc2/command/ParallelRaceGroup.h>
-#include <frc2/command/RunCommand.h>
-#include <frc2/command/CommandPtr.h>
 
 #include "Constants.h"
 #include "subsystems/DriveSubsystem.h"
@@ -34,20 +26,12 @@ class RobotContainer {
   frc2::Command* GetAutonomousCommand();
 
  private:
-  // The driver's controller
-  //frc::XboxController m_driverController{OIConstants::kDriverControllerPort};
   frc::GenericHID m_driverController{OIConstants::kDriverControllerPort};
-  bool yButtonDown = m_driverController.GetRawButtonPressed(4);
-
-  // The robot's subsystems and commands are defined here...
-
-  // The robot's subsystemsSS
   DriveSubsystem m_drive;
-  IntakeSubsystem m_subsystem;
+  IntakeSubsystem m_intake;
 
-  // The chooser for the autonomous routines
   frc::SendableChooser<frc2::Command*> m_chooser;
-  bool m_intakeRunning = false;
+  bool m_isIntakeRunning = false;
 
   void ConfigureButtonBindings();
 };

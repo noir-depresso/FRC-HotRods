@@ -1,14 +1,11 @@
-//Intake.h
-
 #pragma once
 
-#include <rev/SparkMax.h>
 #include <frc2/command/SubsystemBase.h>
+#include <rev/SparkMax.h>
 
 class IntakeSubsystem : public frc2::SubsystemBase {
-
  public:
-  explicit IntakeSubsystem();
+  IntakeSubsystem();
 
   void In();
   void Out();

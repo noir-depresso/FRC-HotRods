@@ -5,7 +5,6 @@
 #pragma once
 
 #include <frc/ADIS16470_IMU.h>
-#include <frc/filter/SlewRateLimiter.h>
 #include <frc/geometry/Pose2d.h>
 #include <frc/geometry/Rotation2d.h>
 #include <frc/kinematics/ChassisSpeeds.h>
@@ -13,9 +12,10 @@
 #include <frc/kinematics/SwerveDriveOdometry.h>
 #include <frc2/command/SubsystemBase.h>
 
+#include <string>
+
 #include "Constants.h"
 #include "MAXSwerveModule.h"
-
 #include "LimelightHelpers.h"
 
 class DriveSubsystem : public frc2::SubsystemBase {
@@ -92,7 +92,12 @@ class DriveSubsystem : public frc2::SubsystemBase {
    */
   void ResetOdometry(frc::Pose2d pose);
 
-  frc::SwerveDriveKinematics<4> kDriveKinematics{
+ private:
+  static constexpr int kVisionLogPeriod = 10;
+
+  void PrintPoseEstimate(const LimelightHelpers::PoseEstimate& ll);
+
+  frc::SwerveDriveKinematics<4> m_driveKinematics{
       frc::Translation2d{DriveConstants::kWheelBase / 2,
                          DriveConstants::kTrackWidth / 2},
       frc::Translation2d{DriveConstants::kWheelBase / 2,
@@ -102,24 +107,17 @@ class DriveSubsystem : public frc2::SubsystemBase {
       frc::Translation2d{-DriveConstants::kWheelBase / 2,
                          -DriveConstants::kTrackWidth / 2}};
 
-  void PrintPoseEstimate(
-    const LimelightHelpers::PoseEstimate& ll);
-
- private:
-  // Components (e.g. motor controllers and sensors) should generally be
-  // declared private and exposed only through public methods.
-
+  // Module order is FL, FR, RL, RR for all kinematics/odometry calls.
   MAXSwerveModule m_frontLeft;
-  MAXSwerveModule m_rearLeft;
   MAXSwerveModule m_frontRight;
+  MAXSwerveModule m_rearLeft;
   MAXSwerveModule m_rearRight;
 
-  // The gyro sensor
   frc::ADIS16470_IMU m_gyro;
 
-  // Odometry class for tracking robot pose
-  // 4 defines the number of modules
   frc::SwerveDriveOdometry<4> m_odometry;
+  std::string m_lastVisionMessage{};
+  int m_visionLogCounter = 0;
 
   frc::Rotation2d GetRotation2d() const;
 };

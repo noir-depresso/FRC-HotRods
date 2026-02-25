@@ -1,15 +1,18 @@
 #include "LimelightHelpers.h"
+
 #include <frc/controller/PIDController.h>
 #include <algorithm>
+#include <string>
 #include <vector>
 
+namespace {
 class AimAtTags {
  public:
   AimAtTags(std::string limelightName, std::vector<int> centerTagIDs)
       : m_ll(std::move(limelightName)),
         m_centerIDs(std::move(centerTagIDs)),
-        m_turnPID(0.03, 0.0, 0.002) {   // NEEDS TUNING NEEDS TUNING TUNE PLSPLSPLSPLS
-    m_turnPID.SetTolerance(1.0);       // degrees
+        m_turnPID(0.03, 0.0, 0.002) {
+    m_turnPID.SetTolerance(1.0);
   }
 
   void Initialize() {
@@ -61,8 +64,6 @@ class AimAtTags {
     // Example: rotate in place (replace with your drive API)
     // drive.Drive(0.0, 0.0, turnCmd);
 
-    // Optional: print debug
-    // wpi::print("Aiming tag {} tx={:.2f} turn={:.2f}\n", bestId, tx, turnCmd);
   }
 
   bool IsFinished() const {
@@ -80,3 +81,4 @@ class AimAtTags {
   std::vector<int> m_centerIDs;
   frc::PIDController m_turnPID;
 };
+}  // namespace

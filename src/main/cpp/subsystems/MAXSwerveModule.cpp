@@ -8,12 +8,10 @@
 
 #include "Configs.h"
 
-using namespace rev::spark;
-
 MAXSwerveModule::MAXSwerveModule(const int drivingCANId, const int turningCANId,
                                  const double chassisAngularOffset)
-    : m_drivingSpark(drivingCANId, SparkMax::MotorType::kBrushless),
-      m_turningSpark(turningCANId, SparkMax::MotorType::kBrushless) {
+    : m_drivingSpark(drivingCANId, rev::spark::SparkMax::MotorType::kBrushless),
+      m_turningSpark(turningCANId, rev::spark::SparkMax::MotorType::kBrushless) {
   // Apply the respective configurations to the SPARKS. Reset parameters before
   // applying the configuration to bring the SPARK to a known good state.
   // Persist the settings to the SPARK to avoid losing them on a power cycle.
@@ -56,10 +54,10 @@ void MAXSwerveModule::SetDesiredState(
       frc::Rotation2d(units::radian_t{m_turningAbsoluteEncoder.GetPosition()}));
 
   m_drivingClosedLoopController.SetSetpoint((double)correctedDesiredState.speed,
-                                            SparkMax::ControlType::kVelocity);
+                                            rev::spark::SparkMax::ControlType::kVelocity);
   m_turningClosedLoopController.SetSetpoint(
       correctedDesiredState.angle.Radians().value(),
-      SparkMax::ControlType::kPosition);
+      rev::spark::SparkMax::ControlType::kPosition);
 
   m_desiredState = desiredState;
 }

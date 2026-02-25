@@ -5,23 +5,15 @@
 #include "RobotContainer.h"
 
 #include <frc/MathUtil.h>
+#include <frc2/command/InstantCommand.h>
 #include <frc2/command/RunCommand.h>
 #include <frc2/command/button/JoystickButton.h>
-#include <frc2/command/button/Trigger.h>
-#include <units/velocity.h>
 #include <units/angular_velocity.h>
-#include "RobotContainer.h"
-#include "Constants.h"
-#include "subsystems/DriveSubsystem.h"
-
-using namespace DriveConstants;
+#include <units/velocity.h>
 
 RobotContainer::RobotContainer() {
-  // Configure the button bindings
   ConfigureButtonBindings();
 
-  // Default drive command (teleop)
-  // Left stick = translation, right stick X = rotation (based on your axis mapping)
   m_drive.SetDefaultCommand(
       frc2::RunCommand(
           [this] {
@@ -34,37 +26,26 @@ RobotContainer::RobotContainer() {
             const auto rot = -units::radians_per_second_t{
                 frc::ApplyDeadband(m_driverController.GetRawAxis(4),
                                   OIConstants::kDriveDeadband)};
-
-            // Last argument: fieldRelative
-            m_drive.Drive(xSpeed, ySpeed, rot, false);
+            m_drive.Drive(xSpeed, ySpeed, rot, true);
           },
           {&m_drive}));
 }
 
 void RobotContainer::ConfigureButtonBindings() {
   frc2::JoystickButton(&m_driverController, 6)
-      .WhileTrue(new frc2::RunCommand([this] { m_drive.SetX(); }, {&m_drive}));
+      .WhileTrue(frc2::RunCommand([this] { m_drive.SetX(); }, {&m_drive}).ToPtr());
 
-       // Schedule ExampleCommand when exampleCondition changes to true
- frc2::JoystickButton(&m_driverController, 4).OnTrue(new frc2::InstantCommand([this] {
-    m_intakeRunning = !m_intakeRunning;
-
-        if (m_intakeRunning)
-            m_subsystem.In();
-        else
-            m_subsystem.Stop();
-    }));
-
-  // frc2::Trigger([this] {
-  //   return m_subsystem.ExampleCondition();
-  // }).OnTrue(ExampleCommand(&m_subsystem).ToPtr());
-
-  // Schedule ExampleMethodCommand when the Xbox controller's B button is
-  // // pressed, cancelling on release.
-  // m_driverController.B().WhileTrue(m_subsystem.ExampleMethodCommand());
+  frc2::JoystickButton(&m_driverController, 4).OnTrue(
+      frc2::InstantCommand([this] {
+        m_isIntakeRunning = !m_isIntakeRunning;
+        if (m_isIntakeRunning) {
+          m_intake.In();
+        } else {
+          m_intake.Stop();
+        }
+      }).ToPtr());
 }
 
-
 frc2::Command* RobotContainer::GetAutonomousCommand() {
-  return nullptr;  // later return your actual auto command
+  return nullptr;
 }

@@ -12,8 +12,6 @@
 #include <rev/SparkMax.h>
 #include <rev/SparkRelativeEncoder.h>
 
-using namespace rev::spark;
-
 class MAXSwerveModule {
  public:
   /**
@@ -52,16 +50,16 @@ class MAXSwerveModule {
   void ResetEncoders();
 
  private:
-  SparkMax m_drivingSpark;
-  SparkMax m_turningSpark;
+  rev::spark::SparkMax m_drivingSpark;
+  rev::spark::SparkMax m_turningSpark;
 
-  SparkRelativeEncoder m_drivingEncoder = m_drivingSpark.GetEncoder();
-  SparkAbsoluteEncoder m_turningAbsoluteEncoder =
+  rev::spark::SparkRelativeEncoder m_drivingEncoder = m_drivingSpark.GetEncoder();
+  rev::spark::SparkAbsoluteEncoder m_turningAbsoluteEncoder =
       m_turningSpark.GetAbsoluteEncoder();
 
-  SparkClosedLoopController m_drivingClosedLoopController =
+  rev::spark::SparkClosedLoopController m_drivingClosedLoopController =
       m_drivingSpark.GetClosedLoopController();
-  SparkClosedLoopController m_turningClosedLoopController =
+  rev::spark::SparkClosedLoopController m_turningClosedLoopController =
       m_turningSpark.GetClosedLoopController();
 
   double m_chassisAngularOffset = 0;

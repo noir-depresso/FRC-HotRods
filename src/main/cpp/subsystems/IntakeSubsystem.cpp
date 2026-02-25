@@ -1,31 +1,26 @@
-//Intake.cpp
-
 #include "subsystems/IntakeSubsystem.h"
-#include <rev/SparkMax.h>
+
+#include <algorithm>
+#include <frc/MathUtil.h>
 #include <rev/config/SparkMaxConfig.h>
 
-#include <frc/MathUtil.h>
 #include "Constants.h"
 
 IntakeSubsystem::IntakeSubsystem()
-
-    : m_motor(DriveConstants::kIntakeCanID,
+    : m_motor(IntakeConstants::kMotorCanId,
               rev::spark::SparkMax::MotorType::kBrushless) {
-
-  rev::spark::SparkMaxConfig neo20config;
-
-  neo20config.SetIdleMode(rev::spark::SparkBaseConfig::IdleMode::kBrake);
-  neo20config.SmartCurrentLimit(40);
-  neo20config.OpenLoopRampRate(0.10);
-  neo20config.VoltageCompensation(12.0);
+  rev::spark::SparkMaxConfig intakeConfig;
+  intakeConfig.SetIdleMode(rev::spark::SparkBaseConfig::IdleMode::kBrake);
+  intakeConfig.SmartCurrentLimit(IntakeConstants::kCurrentLimitAmps);
+  intakeConfig.OpenLoopRampRate(IntakeConstants::kOpenLoopRampSeconds);
+  intakeConfig.VoltageCompensation(12.0);
 
   m_motor.Configure(
-    neo20config,
+    intakeConfig,
     rev::ResetMode::kResetSafeParameters,
     rev::PersistMode::kPersistParameters
   );
 }
-
 
 void IntakeSubsystem::SetPercent(double percent) {
   percent = frc::ApplyDeadband(percent, 0.02);
@@ -33,6 +28,14 @@ void IntakeSubsystem::SetPercent(double percent) {
   m_motor.Set(percent);
 }
 
-void IntakeSubsystem::In()  { SetPercent(+0.675); } // start here, tune later
-void IntakeSubsystem::Out() { SetPercent(-0.35); } // usually slower outtake
-void IntakeSubsystem::Stop(){ m_motor.StopMotor(); }
+void IntakeSubsystem::In() {
+  SetPercent(IntakeConstants::kInPercent);
+}
+
+void IntakeSubsystem::Out() {
+  SetPercent(IntakeConstants::kOutPercent);
+}
+
+void IntakeSubsystem::Stop() {
+  m_motor.StopMotor();
+}
