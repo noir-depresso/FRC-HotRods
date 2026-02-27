@@ -204,32 +204,3 @@ void DriveSubsystem::PrintPoseEstimate(const LimelightHelpers::PoseEstimate& ll)
       ll.avgTagDist,
       ll.timestampSeconds.value());
 }
-
-
-void DriveSubsystem::Drive(units::meters_per_second_t xSpeed,
-                           units::meters_per_second_t ySpeed,
-                           units::radians_per_second_t rot,
-                           bool fieldRelative) {
-  frc::ChassisSpeeds speeds =
-      fieldRelative
-          ? frc::ChassisSpeeds::FromFieldRelativeSpeeds(xSpeed, ySpeed, rot,
-                                                        GetRotation2d())
-          : frc::ChassisSpeeds{xSpeed, ySpeed, rot};
-
-  auto states = kDriveKinematics.ToSwerveModuleStates(speeds);
-  kDriveKinematics.DesaturateWheelSpeeds(&states, kMaxSpeed);
-
-  // Must match kDriveKinematics module order (commonly FL, FR, RL, RR)
-  m_frontLeft.SetDesiredState(states[0]);
-  m_frontRight.SetDesiredState(states[1]);
-  m_rearLeft.SetDesiredState(states[2]);
-  m_rearRight.SetDesiredState(states[3]);
-}
-
-void DriveSubsystem::SetX() {
-  // "X" lock to resist being pushed
-  m_frontLeft.SetDesiredState({0_mps, frc::Rotation2d{45_deg}});
-  m_frontRight.SetDesiredState({0_mps, frc::Rotation2d{-45_deg}});
-  m_rearLeft.SetDesiredState({0_mps, frc::Rotation2d{-45_deg}});
-  m_rearRight.SetDesiredState({0_mps, frc::Rotation2d{45_deg}});
-}
