@@ -50,10 +50,30 @@ void RobotContainer::ConfigureButtonBindings() {
     m_intakeRunning = !m_intakeRunning;
 
         if (m_intakeRunning)
-            m_subsystem.In();
+            m_intake.In();
         else
-            m_subsystem.Stop();
+            m_intake.Stop();
     }));
+
+     frc2::JoystickButton(&m_driverController, 1).OnTrue(new frc2::InstantCommand([this] {
+    m_shooterDriveRunning = !m_shooterDriveRunning;
+
+        if (m_shooterDriveRunning)
+            m_shooter.SpinDrivingMotors();
+        else
+            m_shooter.StopDrivingMotors();
+    }));
+
+    //      frc2::JoystickButton(&m_driverController, 2).OnTrue(new frc2::InstantCommand([this] {
+    // m_shooterTurnRunning = !m_shooterTurnRunning;
+
+    //     if (m_shooterTurnRunning)
+    //         m_shooter.SpinTurningMotor();
+    //     else
+    //         m_shooter.StopTurningMotor();
+    // }));
+
+
 
   // frc2::Trigger([this] {
   //   return m_subsystem.ExampleCondition();
