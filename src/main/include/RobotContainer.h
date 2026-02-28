@@ -21,6 +21,10 @@
 #include "subsystems/IntakeSubsystem.h"
 #include "subsystems/ShooterSubsystem.h"
 
+#include <memory>
+#include "VisionIO.h"
+
+
 /**
  * This class is where the bulk of the robot should be declared.  Since
  * Command-based is a "declarative" paradigm, very little robot logic should
@@ -57,4 +61,7 @@ DriveSubsystem& GetDriveSubsystem() { return m_drive; }
   bool m_shooterTurnRunning = false;
 
   void ConfigureButtonBindings();
+
+      // Vision system pointer
+    std::shared_ptr<VisionIO> vision;
 };
