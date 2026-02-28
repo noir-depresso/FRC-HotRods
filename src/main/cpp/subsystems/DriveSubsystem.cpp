@@ -9,6 +9,8 @@
 #include <frc/kinematics/ChassisSpeeds.h>
 #include <frc/geometry/Rotation2d.h>
 
+#include <frc/smartdashboard/SmartDashboard.h>
+
 #include <fmt/core.h>
 
 #include "Constants.h"
@@ -37,6 +39,15 @@ DriveSubsystem::DriveSubsystem()
                  frc::Pose2d{}} {
   HAL_Report(HALUsageReporting::kResourceType_RobotDrive,
              HALUsageReporting::kRobotDriveSwerve_MaxSwerve);
+
+    frc::SmartDashboard::PutData("Field", &m_field);
+
+  // Start robot at origin (0,0,0)
+  m_pose = frc::Pose2d();
+
+  auto inst = nt::NetworkTableInstance::GetDefault();
+
+  m_pose3dPub = inst.GetStructTopic<frc::Pose3d>("RobotPose3d").Publish();
 }
 
 
@@ -51,6 +62,10 @@ void DriveSubsystem::Drive(units::meters_per_second_t xSpeed,
       ySpeed.value() * DriveConstants::kMaxSpeed;
   units::radians_per_second_t rotDelivered =
       rot.value() * DriveConstants::kMaxAngularSpeed;
+
+m_lastXSpeed = xSpeed.value() * DriveConstants::kMaxSpeed.value();
+m_lastYSpeed = ySpeed.value() * DriveConstants::kMaxSpeed.value();
+m_lastRot   = rot.value() * DriveConstants::kMaxAngularSpeed.value();
 
   auto states = kDriveKinematics.ToSwerveModuleStates(
       fieldRelative
@@ -122,6 +137,7 @@ void DriveSubsystem::ResetOdometry(frc::Pose2d pose) {
 
 //Update() in Unity
 void DriveSubsystem::Periodic() {
+
   // Correct gyro rotation??? (degrees -> Rotation2d)
   frc::Rotation2d gyroRot{units::degree_t{
       m_gyro.GetAngle(frc::ADIS16470_IMU::IMUAxis::kZ)}};
@@ -179,6 +195,27 @@ void DriveSubsystem::Periodic() {
     fmt::print("{}\n", msg);
     g_lastLLMessage = msg;
   }
+
+     // Current pose from odometry
+    frc::Pose2d pose = m_odometry.GetPose();
+
+    // Simple simulation integration (assuming 20ms loop)
+    double dt = 0.02; // 20 ms
+pose = frc::Pose2d{
+    pose.X() + units::meter_t{m_lastXSpeed * dt},
+    pose.Y() + units::meter_t{m_lastYSpeed * dt},
+    pose.Rotation() + frc::Rotation2d{units::radian_t{m_lastRot * dt}}
+};
+    // Update odometry
+    m_odometry.ResetPosition(GetRotation2d(),
+                             {m_frontLeft.GetPosition(),
+                              m_frontRight.GetPosition(),
+                              m_rearLeft.GetPosition(),
+                              m_rearRight.GetPosition()},
+                             pose);
+
+    // Update Field2d for AdvantageScope
+    m_field.SetRobotPose(pose);
 }
 
 frc::Rotation2d DriveSubsystem::GetRotation2d() const {

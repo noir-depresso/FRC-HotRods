@@ -7,6 +7,8 @@
 #include <frc/smartdashboard/SmartDashboard.h>
 #include <frc2/command/CommandScheduler.h>
 
+#include "RobotContainer.h"
+
 void Robot::RobotInit() {}
 
 /**
@@ -48,6 +50,9 @@ void Robot::TeleopInit() {
   // continue until interrupted by another command, remove
   // this line or comment it out.
   if (m_autonomousCommand != nullptr) {
+
+m_container.GetDriveSubsystem().ResetOdometry(frc::Pose2d{0_m, 0_m, 0_deg}); // might not need
+
     m_autonomousCommand->Cancel();
     m_autonomousCommand = nullptr;
   }
