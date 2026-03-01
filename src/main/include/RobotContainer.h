@@ -21,6 +21,10 @@
 #include "subsystems/IntakeSubsystem.h"
 #include "subsystems/ShooterSubsystem.h"
 
+#include <memory>
+#include "VisionIO.h"
+
+
 /**
  * This class is where the bulk of the robot should be declared.  Since
  * Command-based is a "declarative" paradigm, very little robot logic should
@@ -34,6 +38,8 @@ class RobotContainer {
 
   frc2::Command* GetAutonomousCommand();
 
+DriveSubsystem& GetDriveSubsystem() { return m_drive; }
+
  private:
   // The driver's controller
   //frc::XboxController m_driverController{OIConstants::kDriverControllerPort};
@@ -42,7 +48,7 @@ class RobotContainer {
 
   // The robot's subsystems and commands are defined here...
 
-  // The robot's subsystemsSS
+  // The robot's subsystems
   DriveSubsystem m_drive;
   IntakeSubsystem m_intake;
   ShooterSubsystem m_shooter;
@@ -55,4 +61,7 @@ class RobotContainer {
   bool m_shooterTurnRunning = false;
 
   void ConfigureButtonBindings();
+
+      // Vision system pointer
+    std::shared_ptr<VisionIO> vision;
 };

@@ -13,12 +13,25 @@
 #include "RobotContainer.h"
 #include "Constants.h"
 #include "subsystems/DriveSubsystem.h"
+#include "commands/AutoDriveForward.h"
+
+#include "VisionIO.h"
+#include "VisionIOLimelight.h"
+#include "VisionIOSim.h"
 
 using namespace DriveConstants;
 
 RobotContainer::RobotContainer() {
   // Configure the button bindings
   ConfigureButtonBindings();
+
+    // ----- Initialize vision -----
+  if (frc::RobotBase::IsSimulation()) {
+      vision = std::make_shared<VisionIOSim>();
+  } else {
+      vision = std::make_shared<VisionIOLimelight>();
+  }
+  // -----------------------------
 
   // Default drive command (teleop)
   // Left stick = translation, right stick X = rotation (based on your axis mapping)
@@ -85,6 +98,7 @@ void RobotContainer::ConfigureButtonBindings() {
 }
 
 
+
 frc2::Command* RobotContainer::GetAutonomousCommand() {
-  return nullptr;  // later return your actual auto command
+  return new AutoDriveForward(&m_drive, 2_m);
 }

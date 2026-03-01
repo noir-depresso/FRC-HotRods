@@ -13,6 +13,11 @@
 #include <frc/kinematics/SwerveDriveOdometry.h>
 #include <frc2/command/SubsystemBase.h>
 
+#include <frc/smartdashboard/Field2d.h>
+#include <frc/geometry/Pose3d.h>
+#include <networktables/NetworkTableInstance.h>
+#include <networktables/StructTopic.h>
+
 #include "Constants.h"
 #include "MAXSwerveModule.h"
 
@@ -21,6 +26,7 @@
 class DriveSubsystem : public frc2::SubsystemBase {
  public:
   DriveSubsystem();
+
 
   /**
    * Will be called periodically whenever the CommandScheduler runs.
@@ -78,6 +84,8 @@ class DriveSubsystem : public frc2::SubsystemBase {
    */
   double GetTurnRate();
 
+  // void DriveSubsystem::SimulationPeriodic();
+
   /**
    * Returns the currently-estimated pose of the robot.
    *
@@ -106,6 +114,8 @@ class DriveSubsystem : public frc2::SubsystemBase {
   void PrintPoseEstimate(
     const LimelightHelpers::PoseEstimate& ll);
 
+
+    
  private:
   // Components (e.g. motor controllers and sensors) should generally be
   // declared private and exposed only through public methods.
@@ -123,4 +133,14 @@ class DriveSubsystem : public frc2::SubsystemBase {
   frc::SwerveDriveOdometry<4> m_odometry;
 
   frc::Rotation2d GetRotation2d() const;
+
+  frc::Field2d m_field;
+  frc::Pose2d m_pose;
+
+  nt::StructPublisher<frc::Pose3d> m_pose3dPub;
+
+      // Last commanded speeds (for simulating odometry in AdvantageScope)
+    double m_lastXSpeed = 0.0;   // meters per second
+    double m_lastYSpeed = 0.0;   // meters per second
+    double m_lastRot   = 0.0;   // radians per second
 };
