@@ -16,7 +16,7 @@ public:
         : camera("simCam"),
           robotToCam(frc::Translation3d(0.3_m, 0.0_m, 0.5_m), frc::Rotation3d())
     {
-       
+
 std::shared_ptr<frc::AprilTagFieldLayout> fieldLayout;
 
 // in constructor:
@@ -25,7 +25,7 @@ fieldLayout = std::make_shared<frc::AprilTagFieldLayout>(
 );
 
 poseEstimator = std::make_unique<photon::PhotonPoseEstimator>(
-    *fieldLayout,
+    fieldLayout,
     photon::PoseStrategy::MULTI_TAG_PNP_ON_COPROCESSOR,
     robotToCam
 );
