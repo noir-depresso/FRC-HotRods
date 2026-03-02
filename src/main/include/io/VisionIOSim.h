@@ -6,6 +6,9 @@
 #include <photon/simulation/PhotonCameraSim.h>
 #include <photon/simulation/VisionSystemSim.h>
 #include <frc/geometry/Transform3d.h>
+#include <frc/apriltag/AprilTagFieldLayout.h>
+#include <memory>
+#include <optional>
 
 class VisionIOSim : public VisionIO {
 public:
@@ -13,13 +16,20 @@ public:
         : camera("simCam"),
           robotToCam(frc::Translation3d(0.3_m, 0.0_m, 0.5_m), frc::Rotation3d())
     {
-        fieldLayout = AprilTagFieldLayout::LoadField(AprilTagFields::k2026Field);
+       
+std::shared_ptr<frc::AprilTagFieldLayout> fieldLayout;
 
-        poseEstimator = std::make_unique<photon::PhotonPoseEstimator>(
-            *fieldLayout,
-            photon::PoseStrategy::MULTI_TAG_PNP_ON_COPROCESSOR,
-            robotToCam
-        );
+// in constructor:
+fieldLayout = std::make_shared<frc::AprilTagFieldLayout>(
+    frc::AprilTagFieldLayout::LoadField(frc::AprilTagField::k2026RebuiltWelded)
+);
+
+poseEstimator = std::make_unique<photon::PhotonPoseEstimator>(
+    *fieldLayout,
+    photon::PoseStrategy::MULTI_TAG_PNP_ON_COPROCESSOR,
+    camera,
+    robotToCam
+);
 
         visionSim = std::make_unique<photon::VisionSystemSim>("main");
         cameraSim = std::make_unique<photon::PhotonCameraSim>(&camera);
@@ -45,5 +55,5 @@ private:
     std::unique_ptr<photon::PhotonPoseEstimator> poseEstimator;
     std::unique_ptr<photon::VisionSystemSim> visionSim;
     frc::Transform3d robotToCam;
-    std::shared_ptr<AprilTagFieldLayout> fieldLayout;
+    std::shared_ptr<frc::AprilTagFieldLayout> fieldLayout;
 };
