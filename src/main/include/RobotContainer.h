@@ -22,16 +22,9 @@
 #include "subsystems/ShooterSubsystem.h"
 
 #include <memory>
-#include "VisionIO.h"
+#include "io/VisionIO.h"
 
 
-/**
- * This class is where the bulk of the robot should be declared.  Since
- * Command-based is a "declarative" paradigm, very little robot logic should
- * actually be handled in the {@link Robot} periodic methods (other than the
- * scheduler calls).  Instead, the structure of the robot (including subsystems,
- * commands, and button mappings) should be declared here.
- */
 class RobotContainer {
  public:
   RobotContainer();
