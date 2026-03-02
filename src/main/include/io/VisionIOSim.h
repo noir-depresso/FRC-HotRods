@@ -1,10 +1,10 @@
 // VisionIOSim.h
 #pragma once
 #include "VisionIO.h"
-#include <photonlib/PhotonCamera.h>
-#include <photonlib/PhotonPoseEstimator.h>
-#include <photonlib/simulation/PhotonCameraSim.h>
-#include <photonlib/simulation/VisionSystemSim.h>
+#include <photon/PhotonCamera.h>
+#include <photon/PhotonPoseEstimator.h>
+#include <photon/simulation/PhotonCameraSim.h>
+#include <photon/simulation/VisionSystemSim.h>
 #include <frc/geometry/Transform3d.h>
 
 class VisionIOSim : public VisionIO {
@@ -15,15 +15,16 @@ public:
     {
         fieldLayout = AprilTagFieldLayout::LoadField(AprilTagFields::k2026Field);
 
-        poseEstimator = std::make_unique<photonlib::PhotonPoseEstimator>(
+        poseEstimator = std::make_unique<photon::PhotonPoseEstimator>(
             *fieldLayout,
-            photonlib::PoseStrategy::MULTI_TAG_PNP,
+            photon::PoseStrategy::MULTI_TAG_PNP_ON_COPROCESSOR,
             robotToCam
         );
 
-        visionSim = std::make_unique<photonlib::sim::VisionSystemSim>("main");
+        visionSim = std::make_unique<photon::VisionSystemSim>("main");
+        cameraSim = std::make_unique<photon::PhotonCameraSim>(&camera);
         visionSim->AddCamera(
-            std::make_shared<photonlib::sim::PhotonCameraSim>(camera),
+            cameraSim.get(),
             robotToCam
         );
         visionSim->AddAprilTags(*fieldLayout);
@@ -33,15 +34,16 @@ public:
         visionSim->Update(robotPose);
     }
 
-    std::optional<photonlib::EstimatedRobotPose> GetEstimatedPose(frc::Pose2d currentEstimate) override {
+    std::optional<photon::EstimatedRobotPose> GetEstimatedPose(frc::Pose2d currentEstimate) override {
         auto result = camera.GetLatestResult();
         return poseEstimator->Update(result);
     }
 
 private:
-    photonlib::PhotonCamera camera;
-    std::unique_ptr<photonlib::PhotonPoseEstimator> poseEstimator;
-    std::unique_ptr<photonlib::sim::VisionSystemSim> visionSim;
+    photon::PhotonCamera camera;
+    std::unique_ptr<photon::PhotonCameraSim> cameraSim;
+    std::unique_ptr<photon::PhotonPoseEstimator> poseEstimator;
+    std::unique_ptr<photon::VisionSystemSim> visionSim;
     frc::Transform3d robotToCam;
     std::shared_ptr<AprilTagFieldLayout> fieldLayout;
 };

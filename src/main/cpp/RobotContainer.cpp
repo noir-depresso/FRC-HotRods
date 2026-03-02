@@ -15,9 +15,9 @@
 #include "subsystems/DriveSubsystem.h"
 #include "commands/AutoDriveForward.h"
 
-#include "VisionIO.h"
-#include "VisionIOLimelight.h"
-#include "VisionIOSim.h"
+#include "io/VisionIO.h"
+#include "io/VisionIOLimelight.h"
+#include "io/VisionIOSim.h"
 
 using namespace DriveConstants;
 
