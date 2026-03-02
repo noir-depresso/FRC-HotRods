@@ -27,7 +27,6 @@ fieldLayout = std::make_shared<frc::AprilTagFieldLayout>(
 poseEstimator = std::make_unique<photon::PhotonPoseEstimator>(
     fieldLayout,
     photon::PoseStrategy::MULTI_TAG_PNP_ON_COPROCESSOR,
-    camera,
     robotToCam
 );
 
