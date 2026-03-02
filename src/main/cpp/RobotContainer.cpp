@@ -14,6 +14,7 @@
 #include "Constants.h"
 #include "subsystems/DriveSubsystem.h"
 #include "commands/AutoDriveForward.h"
+#include <frc/RobotBase.h>
 
 #include "io/VisionIO.h"
 #include "io/VisionIOLimelight.h"
