@@ -16,7 +16,7 @@
 #include "Constants.h"
 #include "subsystems/DriveSubsystem.h"
 #include "commands/AutoDriveForward.h"
-#include "commands/AutoDriveToTagPose.h"
+//#include "commands/AutoDriveToTagPose.h"
 #include "commands/AutoDriveToFieldPoseSafe.h"
 #include <frc/RobotBase.h>
 
@@ -63,8 +63,15 @@ RobotContainer::RobotContainer() {
           },
           {&m_drive}));
 
+pathplanner::RobotConfig config;
 
-          auto config = pathplanner::RobotConfig::fromGUISettings();
+try {
+    config = pathplanner::RobotConfig::fromGUISettings();
+    fmt::print("Loaded PathPlanner RobotConfig successfully!\n");
+} catch (const std::exception& e) {
+    fmt::print("Failed to load RobotConfig from GUI: {}\n", e.what());
+    config = pathplanner::RobotConfig(); // fallback to default safe values
+}
 
     pathplanner::AutoBuilder::configure(
         [this]() { return m_drive.GetPose(); },
@@ -133,7 +140,6 @@ void RobotContainer::ConfigureButtonBindings() {
 
 
 frc2::CommandPtr RobotContainer::GetAutonomousCommand() {
-<<<<<<< HEAD
   //return new AutoDriveForward(&m_drive, 5_m); // potential issue
   // Field-goal autonomous using AprilTag-corrected robot pose.
   // Goal can be any field location (example: near midfield lane).
@@ -153,13 +159,3 @@ frc2::CommandPtr RobotContainer::GetAutonomousCommand() {
 
 return pathplanner::AutoBuilder::buildAuto("Auto 2");
 }
-=======
-  return AutoDriveToTagPose(
-      &m_drive,
-      7,
-      frc::Transform2d{
-          frc::Translation2d{-1.0_m, 0.0_m},
-          frc::Rotation2d{0_deg}})
-      .ToPtr();
-}
->>>>>>> 1f913b448f354b1f822500312f6ad9cc0ea46032
