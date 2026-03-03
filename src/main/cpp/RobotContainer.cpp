@@ -24,6 +24,11 @@
 #include "io/VisionIOLimelight.h"
 #include "io/VisionIOSim.h"
 
+#include <pathplanner/lib/auto/AutoBuilder.h>
+#include <pathplanner/lib/config/RobotConfig.h>
+#include <pathplanner/lib/controllers/PPHolonomicDriveController.h>
+#include <frc/DriverStation.h>
+
 using namespace DriveConstants;
 
 RobotContainer::RobotContainer() {
@@ -57,6 +62,29 @@ RobotContainer::RobotContainer() {
             m_drive.Drive(xSpeed, ySpeed, rot, false);
           },
           {&m_drive}));
+
+
+          auto config = pathplanner::RobotConfig::fromGUISettings();
+
+    pathplanner::AutoBuilder::configure(
+        [this]() { return m_drive.GetPose(); },
+        [this](const frc::Pose2d& pose) { m_drive.ResetOdometry(pose); },
+        [this]() { return m_drive.GetRobotRelativeSpeeds(); },
+        [this](const frc::ChassisSpeeds& speeds) {
+            m_drive.Drive(speeds.vx, speeds.vy, speeds.omega, false);
+        },
+        std::make_shared<pathplanner::PPHolonomicDriveController>(
+            pathplanner::PIDConstants(5.0, 0.0, 0.0),
+            pathplanner::PIDConstants(5.0, 0.0, 0.0)
+        ),
+        config,
+        []() {
+            auto alliance = frc::DriverStation::GetAlliance();
+            return alliance &&
+                   alliance.value() == frc::DriverStation::Alliance::kRed;
+        },
+        &m_drive
+    );
 }
 
 void RobotContainer::ConfigureButtonBindings() {
@@ -104,21 +132,23 @@ void RobotContainer::ConfigureButtonBindings() {
 
 
 
-frc2::Command* RobotContainer::GetAutonomousCommand() {
+frc2::CommandPtr RobotContainer::GetAutonomousCommand() {
   //return new AutoDriveForward(&m_drive, 5_m); // potential issue
   // Field-goal autonomous using AprilTag-corrected robot pose.
   // Goal can be any field location (example: near midfield lane).
-  constexpr frc::Pose2d kGoalPose{10.5_m, 1.1_m, 0_deg};
+//   constexpr frc::Pose2d kGoalPose{10.5_m, 1.1_m, 0_deg};
 
-  // Approximate circular keep-out around center obstacle/goal hub area.
-  constexpr frc::Translation2d kObstacleCenter{8.3_m, 4.1_m};
-  constexpr units::meter_t kObstacleRadius = 1.3_m;
-  constexpr units::meter_t kClearance = 0.7_m;
+//   // Approximate circular keep-out around center obstacle/goal hub area.
+//   constexpr frc::Translation2d kObstacleCenter{8.3_m, 4.1_m};
+//   constexpr units::meter_t kObstacleRadius = 1.3_m;
+//   constexpr units::meter_t kClearance = 0.7_m;
 
-  return new AutoDriveToFieldPoseSafe(
-      &m_drive,
-      kGoalPose,
-      kObstacleCenter,
-      kObstacleRadius,
-      kClearance);
+//   return new AutoDriveToFieldPoseSafe(
+//       &m_drive,
+//       kGoalPose,
+//       kObstacleCenter,
+//       kObstacleRadius,
+//       kClearance);
+
+return pathplanner::AutoBuilder::buildAuto("Auto 2");
 }

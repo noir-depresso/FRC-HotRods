@@ -65,6 +65,9 @@ class DriveSubsystem : public frc2::SubsystemBase {
    */
   void SetModuleStates(wpi::array<frc::SwerveModuleState, 4> desiredStates);
 
+
+  frc::ChassisSpeeds GetRobotRelativeSpeeds() const;
+  
   /**
    * Returns the heading of the robot.
    *

@@ -42,7 +42,7 @@ void Robot::DisabledPeriodic() {}
 void Robot::AutonomousInit() {
   m_autonomousCommand = m_container.GetAutonomousCommand();
 
-  if (m_autonomousCommand != nullptr) {
+  if (m_autonomousCommand) {
     m_autonomousCommand->Schedule();
   }
 }
@@ -50,9 +50,9 @@ void Robot::AutonomousInit() {
 void Robot::AutonomousPeriodic() {}
 
 void Robot::TeleopInit() {
-  if (m_autonomousCommand != nullptr) {
+  if (m_autonomousCommand) {
     m_autonomousCommand->Cancel();
-    m_autonomousCommand = nullptr;
+    m_autonomousCommand.reset();   // clears the optional
   }
 
   m_container.GetDriveSubsystem().ResetOdometry(

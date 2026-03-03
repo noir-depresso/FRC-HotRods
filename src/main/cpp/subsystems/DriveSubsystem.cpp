@@ -11,6 +11,12 @@
 #include <frc/kinematics/ChassisSpeeds.h>
 #include <frc/geometry/Rotation2d.h>
 
+#include <frc/geometry/Pose2d.h>
+
+#include <pathplanner/lib/auto/AutoBuilder.h>
+#include <pathplanner/lib/controllers/PPHolonomicDriveController.h>
+#include <pathplanner/lib/config/PIDConstants.h>
+#include <pathplanner/lib/config/RobotConfig.h>
 
 #include <frc/smartdashboard/SmartDashboard.h>
 
@@ -20,6 +26,8 @@
 #include "LimelightHelpers.h"
 
 using namespace DriveConstants;
+  using namespace pathplanner;
+
 
 // File-local state (avoid global symbol collisions across cpp files)
 static std::string g_lastLLMessage{};
@@ -52,6 +60,53 @@ DriveSubsystem::DriveSubsystem()
   auto inst = nt::NetworkTableInstance::GetDefault();
 
   m_pose3dPub = inst.GetStructTopic<frc::Pose3d>("RobotPose3d").Publish();
+
+  // pathplanner auto builder
+// RobotConfig config;
+
+// try {
+//     config = RobotConfig::fromGUISettings();
+// } catch (...) {
+//     fmt::print("Failed to load RobotConfig from GUI\n");
+// }
+
+// AutoBuilder::configure(
+//     [this]() { return GetPose(); },
+
+//     [this](const frc::Pose2d& pose) { ResetOdometry(pose); },
+
+//     [this]() {
+//         return frc::ChassisSpeeds{
+//             units::meters_per_second_t{m_lastXSpeed},
+//             units::meters_per_second_t{m_lastYSpeed},
+//             units::radians_per_second_t{m_lastRot}
+//         };
+//     },
+
+//     [this](const frc::ChassisSpeeds& speeds) {
+//         Drive(
+//             speeds.vx,
+//             speeds.vy,
+//             speeds.omega,
+//             false
+//         );
+//     },
+
+//     std::make_shared<PPHolonomicDriveController>(
+//         PIDConstants(5.0, 0.0, 0.0),
+//         PIDConstants(5.0, 0.0, 0.0)
+//     ),
+
+//     config,
+
+//     []() {
+//         auto alliance = frc::DriverStation::GetAlliance();
+//         return alliance &&
+//                alliance.value() == frc::DriverStation::Alliance::kRed;
+//     },
+
+//     this
+// );
 }
 
 
@@ -115,6 +170,16 @@ void DriveSubsystem::ResetEncoders() {
   m_rearLeft.ResetEncoders();
   m_frontRight.ResetEncoders();
   m_rearRight.ResetEncoders();
+}
+
+frc::ChassisSpeeds DriveSubsystem::GetRobotRelativeSpeeds() const {
+    // Compute robot-relative speeds from module states
+    return kDriveKinematics.ToChassisSpeeds(
+        m_frontLeft.GetState(),
+        m_frontRight.GetState(),
+        m_rearLeft.GetState(),
+        m_rearRight.GetState()
+    );
 }
 
 units::degree_t DriveSubsystem::GetHeading() const {
