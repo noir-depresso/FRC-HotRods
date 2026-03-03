@@ -4,57 +4,27 @@
 
 #pragma once
 
-//#include <frc/XboxController.h>
-#include <frc/GenericHID.h>
-#include <frc/controller/PIDController.h>
-#include <frc/controller/ProfiledPIDController.h>
-#include <frc/smartdashboard/SendableChooser.h>
+#include <frc/TimedRobot.h>
 #include <frc2/command/Command.h>
-#include <frc2/command/InstantCommand.h>
-#include <frc2/command/PIDCommand.h>
-#include <frc2/command/ParallelRaceGroup.h>
-#include <frc2/command/RunCommand.h>
-#include <frc2/command/CommandPtr.h>
 
-#include "Constants.h"
-#include "subsystems/DriveSubsystem.h"
-#include "subsystems/IntakeSubsystem.h"
-#include "subsystems/ShooterSubsystem.h"
+#include "RobotContainer.h"
 
-#include <memory>
-#include "io/VisionIO.h"
-
-
-class RobotContainer {
+class Robot : public frc::TimedRobot {
  public:
-  RobotContainer();
-
-  frc2::Command* GetAutonomousCommand();
-
-DriveSubsystem& GetDriveSubsystem() { return m_drive; }
+  void RobotInit() override;
+  void RobotPeriodic() override;
+  void DisabledInit() override;
+  void DisabledPeriodic() override;
+  void AutonomousInit() override;
+  void AutonomousPeriodic() override;
+  void TeleopInit() override;
+  void TeleopPeriodic() override;
+  void TestPeriodic() override;
 
  private:
-  // The driver's controller
-  //frc::XboxController m_driverController{OIConstants::kDriverControllerPort};
-  frc::GenericHID m_driverController{OIConstants::kDriverControllerPort};
-  bool yButtonDown = m_driverController.GetRawButtonPressed(4);
+  // Have it null by default so that if testing teleop it
+  // doesn't have undefined behavior and potentially crash.
+  frc2::Command* m_autonomousCommand = nullptr;
 
-  // The robot's subsystems and commands are defined here...
-
-  // The robot's subsystems
-  DriveSubsystem m_drive;
-  IntakeSubsystem m_intake;
-  ShooterSubsystem m_shooter;
-
-  // The chooser for the autonomous routines
-  frc::SendableChooser<frc2::Command*> m_chooser;
-
-  bool m_intakeRunning = false;
-  bool m_shooterDriveRunning = false;
-  bool m_shooterTurnRunning = false;
-
-  void ConfigureButtonBindings();
-
-      // Vision system pointer
-    std::shared_ptr<VisionIO> vision;
+  RobotContainer m_container;
 };

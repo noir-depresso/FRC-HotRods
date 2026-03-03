@@ -10,10 +10,13 @@
 #include <frc2/command/button/Trigger.h>
 #include <units/velocity.h>
 #include <units/angular_velocity.h>
+#include <frc/geometry/Transform2d.h>
+#include <frc/geometry/Translation2d.h>
 #include "RobotContainer.h"
 #include "Constants.h"
 #include "subsystems/DriveSubsystem.h"
 #include "commands/AutoDriveForward.h"
+#include "commands/AutoDriveToTagPose.h"
 #include <frc/RobotBase.h>
 
 #include "io/VisionIO.h"
@@ -101,5 +104,10 @@ void RobotContainer::ConfigureButtonBindings() {
 
 
 frc2::Command* RobotContainer::GetAutonomousCommand() {
-  return new AutoDriveForward(&m_drive, 2_m);
+  return new AutoDriveToTagPose(
+      &m_drive,
+      7,
+      frc::Transform2d{
+          frc::Translation2d{-1.0_m, 0.0_m},
+          frc::Rotation2d{0_deg}});
 }

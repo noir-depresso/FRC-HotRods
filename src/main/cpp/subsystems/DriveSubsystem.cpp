@@ -1,6 +1,8 @@
 #include "subsystems/DriveSubsystem.h"
 
 #include <frc/DriverStation.h>
+#include <frc/RobotBase.h>
+#include <frc/Timer.h>
 #include <frc/geometry/Rotation2d.h>
 #include <hal/FRCUsageReporting.h>
 #include <units/angle.h>
@@ -8,6 +10,7 @@
 #include <units/velocity.h>
 #include <frc/kinematics/ChassisSpeeds.h>
 #include <frc/geometry/Rotation2d.h>
+
 
 #include <frc/smartdashboard/SmartDashboard.h>
 
@@ -21,6 +24,7 @@ using namespace DriveConstants;
 // File-local state (avoid global symbol collisions across cpp files)
 static std::string g_lastLLMessage{};
 static int g_printCounter = 0;
+static units::second_t g_lastVisionResetTime = 0_s;
 
 DriveSubsystem::DriveSubsystem()
     : m_frontLeft{kFrontLeftDrivingCanId, kFrontLeftTurningCanId,
@@ -164,9 +168,23 @@ void DriveSubsystem::Periodic() {
 
   auto ll = LimelightHelpers::getBotPoseEstimate_wpiBlue_MegaTag2("limelight");
 
+  if (frc::DriverStation::IsAutonomousEnabled() && ll.tagCount > 0) {
+    const units::second_t now = frc::Timer::GetFPGATimestamp();
+    if ((now - g_lastVisionResetTime) > 0.10_s) {
+      ResetOdometry(ll.pose);
+      g_lastVisionResetTime = now;
+    }
+  }
+
   if (ll.tagCount > 0) {
     static int posePrintCounter = 0;
     if ((++posePrintCounter % 10) == 0) {
+      std::string ids;
+      for (size_t i = 0; i < ll.rawFiducials.size(); ++i) {
+        ids += std::to_string(ll.rawFiducials[i].id);
+        if (i + 1 < ll.rawFiducials.size()) ids += ",";
+      }
+      fmt::print("Detected AprilTag IDs: [{}]\n", ids);
       PrintPoseEstimate(ll);
     }
   }
@@ -197,25 +215,29 @@ void DriveSubsystem::Periodic() {
   }
 
      // Current pose from odometry
+  // In sim, advance a lightweight kinematic pose integration for visualization.
+  // On real robot, do NOT overwrite odometry here (that would undo encoder/vision updates).
+if (frc::RobotBase::IsSimulation()) {
     frc::Pose2d pose = m_odometry.GetPose();
+    constexpr double kDt = 0.02;
 
-    // Simple simulation integration (assuming 20ms loop)
-    double dt = 0.02; // 20 ms
-pose = frc::Pose2d{
-    pose.X() + units::meter_t{m_lastXSpeed * dt},
-    pose.Y() + units::meter_t{m_lastYSpeed * dt},
-    pose.Rotation() + frc::Rotation2d{units::radian_t{m_lastRot * dt}}
-};
-    // Update odometry
-    m_odometry.ResetPosition(GetRotation2d(),
-                             {m_frontLeft.GetPosition(),
-                              m_frontRight.GetPosition(),
-                              m_rearLeft.GetPosition(),
-                              m_rearRight.GetPosition()},
-                             pose);
+    pose = frc::Pose2d{
+        pose.X() + units::meter_t{m_lastXSpeed * kDt},
+        pose.Y() + units::meter_t{m_lastYSpeed * kDt},
+        pose.Rotation() + frc::Rotation2d{units::radian_t{m_lastRot * kDt}}
+    };
 
-    // Update Field2d for AdvantageScope
-    m_field.SetRobotPose(pose);
+    m_odometry.ResetPosition(
+        GetRotation2d(),
+        {m_frontLeft.GetPosition(),
+         m_frontRight.GetPosition(),
+         m_rearLeft.GetPosition(),
+         m_rearRight.GetPosition()},
+        pose);
+}
+
+  // Publish whichever pose odometry currently holds (including any vision correction).
+  m_field.SetRobotPose(m_odometry.GetPose());
 }
 
 frc::Rotation2d DriveSubsystem::GetRotation2d() const {
