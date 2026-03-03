@@ -82,14 +82,14 @@ void RobotContainer::ConfigureButtonBindings() {
             m_shooter.StopDrivingMotors();
     }));
 
-    //      frc2::JoystickButton(&m_driverController, 2).OnTrue(new frc2::InstantCommand([this] {
-    // m_shooterTurnRunning = !m_shooterTurnRunning;
+    frc2::JoystickButton(&m_driverController, 2).OnTrue(new frc2::InstantCommand([this] {
+    m_shooterTurnRunning = !m_shooterTurnRunning;
 
-    //     if (m_shooterTurnRunning)
-    //         m_shooter.SpinTurningMotor();
-    //     else
-    //         m_shooter.StopTurningMotor();
-    // }));
+        if (m_shooterTurnRunning)
+            m_shooter.SetHoodPercent(+0.25);
+        else
+            m_shooter.StopHoodMotor();
+    }));
 
 
 
@@ -104,21 +104,12 @@ void RobotContainer::ConfigureButtonBindings() {
 
 
 
-frc2::Command* RobotContainer::GetAutonomousCommand() {
-  //return new AutoDriveForward(&m_drive, 5_m); // potential issue
-  // Field-goal autonomous using AprilTag-corrected robot pose.
-  // Goal can be any field location (example: near midfield lane).
-  constexpr frc::Pose2d kGoalPose{10.5_m, 1.1_m, 0_deg};
-
-  // Approximate circular keep-out around center obstacle/goal hub area.
-  constexpr frc::Translation2d kObstacleCenter{8.3_m, 4.1_m};
-  constexpr units::meter_t kObstacleRadius = 1.3_m;
-  constexpr units::meter_t kClearance = 0.7_m;
-
-  return new AutoDriveToFieldPoseSafe(
+frc2::CommandPtr RobotContainer::GetAutonomousCommand() {
+  return AutoDriveToTagPose(
       &m_drive,
-      kGoalPose,
-      kObstacleCenter,
-      kObstacleRadius,
-      kClearance);
+      7,
+      frc::Transform2d{
+          frc::Translation2d{-1.0_m, 0.0_m},
+          frc::Rotation2d{0_deg}})
+      .ToPtr();
 }
