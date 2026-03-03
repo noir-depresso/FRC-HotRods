@@ -110,14 +110,14 @@ void RobotContainer::ConfigureButtonBindings() {
             m_shooter.StopDrivingMotors();
     }));
 
-    //      frc2::JoystickButton(&m_driverController, 2).OnTrue(new frc2::InstantCommand([this] {
-    // m_shooterTurnRunning = !m_shooterTurnRunning;
+    frc2::JoystickButton(&m_driverController, 2).OnTrue(new frc2::InstantCommand([this] {
+    m_shooterTurnRunning = !m_shooterTurnRunning;
 
-    //     if (m_shooterTurnRunning)
-    //         m_shooter.SpinTurningMotor();
-    //     else
-    //         m_shooter.StopTurningMotor();
-    // }));
+        if (m_shooterTurnRunning)
+            m_shooter.SetHoodPercent(+0.25);
+        else
+            m_shooter.StopHoodMotor();
+    }));
 
 
 
@@ -133,6 +133,7 @@ void RobotContainer::ConfigureButtonBindings() {
 
 
 frc2::CommandPtr RobotContainer::GetAutonomousCommand() {
+<<<<<<< HEAD
   //return new AutoDriveForward(&m_drive, 5_m); // potential issue
   // Field-goal autonomous using AprilTag-corrected robot pose.
   // Goal can be any field location (example: near midfield lane).
@@ -152,3 +153,13 @@ frc2::CommandPtr RobotContainer::GetAutonomousCommand() {
 
 return pathplanner::AutoBuilder::buildAuto("Auto 2");
 }
+=======
+  return AutoDriveToTagPose(
+      &m_drive,
+      7,
+      frc::Transform2d{
+          frc::Translation2d{-1.0_m, 0.0_m},
+          frc::Rotation2d{0_deg}})
+      .ToPtr();
+}
+>>>>>>> 1f913b448f354b1f822500312f6ad9cc0ea46032

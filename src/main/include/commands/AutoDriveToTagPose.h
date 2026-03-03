@@ -1,17 +1,21 @@
 #pragma once
 
 #include <algorithm>
+#include <string>
+
 #include <frc/Timer.h>
 #include <frc/apriltag/AprilTagFieldLayout.h>
 #include <frc/controller/PIDController.h>
 #include <frc/geometry/Pose2d.h>
 #include <frc/geometry/Transform2d.h>
+#include <frc/smartdashboard/SmartDashboard.h>
 #include <frc2/command/Command.h>
 #include <frc2/command/CommandHelper.h>
 #include <fmt/core.h>
 #include <units/angular_velocity.h>
 #include <units/velocity.h>
 
+#include "Constants.h"
 #include "subsystems/DriveSubsystem.h"
 #include "Constants.h"
 
@@ -36,6 +40,8 @@ class AutoDriveToTagPose
 
   void Initialize() override {
     m_finished = false;
+    m_usedFallbackPose = false;
+    m_endReason = "InProgress";
     m_timer.Reset();
     m_timer.Start();
 
@@ -65,14 +71,17 @@ class AutoDriveToTagPose
     m_xPid.SetTolerance(0.20);
     m_yPid.SetTolerance(0.20);
     m_thetaPid.SetTolerance(8.0);
+
+    frc::SmartDashboard::PutBoolean("Auto/UsedFallbackTagPose", m_usedFallbackPose);
+    frc::SmartDashboard::PutNumber("Auto/TargetTagId", m_targetTagId);
   }
 
   void Execute() override {
     const frc::Pose2d current = m_drive->GetPose();
 
-    const double vx = m_xPid.Calculate(current.X().value(), m_goalPose.X().value());
-    const double vy = m_yPid.Calculate(current.Y().value(), m_goalPose.Y().value());
-    const double omegaDegPerSec =
+    const double rawVx = m_xPid.Calculate(current.X().value(), m_goalPose.X().value());
+    const double rawVy = m_yPid.Calculate(current.Y().value(), m_goalPose.Y().value());
+    const double rawOmegaDegPerSec =
         m_thetaPid.Calculate(current.Rotation().Degrees().value(),
                              m_goalPose.Rotation().Degrees().value());
 
@@ -92,13 +101,32 @@ class AutoDriveToTagPose
 
     if (m_xPid.AtSetpoint() && m_yPid.AtSetpoint() && m_thetaPid.AtSetpoint()) {
       m_finished = true;
+      m_endReason = "AtSetpoint";
     }
   }
 
-  bool IsFinished() override { return m_finished || m_timer.Get() > 6_s; }
+  bool IsFinished() override {
+    if (m_finished) {
+      return true;
+    }
+
+    if (m_timer.Get() > 6_s) {
+      m_endReason = "Timeout";
+      return true;
+    }
+
+    return false;
+  }
 
   void End(bool interrupted) override {
     m_drive->Drive(0_mps, 0_mps, 0_rad_per_s, true);
+
+    if (interrupted) {
+      m_endReason = "Interrupted";
+    }
+
+    frc::SmartDashboard::PutString("Auto/EndReason", m_endReason);
+    fmt::print("AutoDriveToTagPose ended: {}\n", m_endReason);
   }
 
  private:
@@ -113,4 +141,6 @@ class AutoDriveToTagPose
 
   frc::Timer m_timer;
   bool m_finished{false};
+  bool m_usedFallbackPose{false};
+  std::string m_endReason{"NotStarted"};
 };

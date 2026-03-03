@@ -43,7 +43,11 @@ void Robot::AutonomousInit() {
   m_autonomousCommand = m_container.GetAutonomousCommand();
 
   if (m_autonomousCommand) {
+<<<<<<< HEAD
     m_autonomousCommand->Schedule();
+=======
+    m_autonomousCommand.Schedule();
+>>>>>>> 1f913b448f354b1f822500312f6ad9cc0ea46032
   }
 }
 
@@ -51,8 +55,13 @@ void Robot::AutonomousPeriodic() {}
 
 void Robot::TeleopInit() {
   if (m_autonomousCommand) {
+<<<<<<< HEAD
     m_autonomousCommand->Cancel();
     m_autonomousCommand.reset();   // clears the optional
+=======
+    m_autonomousCommand.Cancel();
+    m_autonomousCommand = frc2::CommandPtr();
+>>>>>>> 1f913b448f354b1f822500312f6ad9cc0ea46032
   }
 
   m_container.GetDriveSubsystem().ResetOdometry(
