@@ -20,3 +20,25 @@ To get started, make sure you have calibrated the zero offsets for the absolute 
 It is possible that this project will not work for your robot right out of the box. Various things like the CAN IDs, PIDF gains, chassis configuration, etc. must be determined for your own robot!
 
 These values can be adjusted in the `Configs.h` and `Constants.h` files.
+
+## Build and test in restricted environments
+
+This repository uses the Gradle wrapper (`gradlew`) and 2026 WPILib tooling.
+
+1. Ensure wrapper is executable:
+   - `chmod +x gradlew`
+2. Run tests/build with wrapper:
+   - `./gradlew test`
+   - `./gradlew build`
+
+If your environment blocks downloads from `https://services.gradle.org`, use one of these supported paths:
+
+- allowlist `services.gradle.org` in your proxy/firewall,
+- configure an internal mirror for Gradle distributions, or
+- pre-seed Gradle `9.2.1` in CI/dev images so wrapper resolution is offline-capable.
+
+Minimum pre-merge verification contract:
+
+- build compiles (`./gradlew build`), and
+- unit tests pass (`./gradlew test`).
+

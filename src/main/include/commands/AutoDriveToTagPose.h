@@ -1,16 +1,21 @@
 #pragma once
 
+#include <algorithm>
+#include <string>
+
 #include <frc/Timer.h>
 #include <frc/apriltag/AprilTagFieldLayout.h>
 #include <frc/controller/PIDController.h>
 #include <frc/geometry/Pose2d.h>
 #include <frc/geometry/Transform2d.h>
+#include <frc/smartdashboard/SmartDashboard.h>
 #include <frc2/command/Command.h>
 #include <frc2/command/CommandHelper.h>
 #include <fmt/core.h>
 #include <units/angular_velocity.h>
 #include <units/velocity.h>
 
+#include "Constants.h"
 #include "subsystems/DriveSubsystem.h"
 
 /**
@@ -34,6 +39,8 @@ class AutoDriveToTagPose
 
   void Initialize() override {
     m_finished = false;
+    m_usedFallbackPose = false;
+    m_endReason = "InProgress";
     m_timer.Reset();
     m_timer.Start();
 
@@ -51,41 +58,86 @@ class AutoDriveToTagPose
     } else {
       // Fallback keeps robot near center if configured tag is missing.
       m_goalPose = frc::Pose2d{2.0_m, 2.0_m, 0_deg};
-      fmt::print("Auto target tag {} not found in layout; fallback goal X={:.2f}m Y={:.2f}m Rot={:.1f}deg\n",
-                 m_targetTagId,
-                 m_goalPose.X().value(),
-                 m_goalPose.Y().value(),
-                 m_goalPose.Rotation().Degrees().value());
+      m_usedFallbackPose = true;
+      m_endReason = "TagNotFoundUsingFallback";
+      fmt::print(
+          "Auto target tag {} not found in layout; fallback goal X={:.2f}m Y={:.2f}m Rot={:.1f}deg\n",
+          m_targetTagId,
+          m_goalPose.X().value(),
+          m_goalPose.Y().value(),
+          m_goalPose.Rotation().Degrees().value());
     }
 
     m_xPid.SetTolerance(0.20);
     m_yPid.SetTolerance(0.20);
     m_thetaPid.SetTolerance(8.0);
+
+    frc::SmartDashboard::PutBoolean("Auto/UsedFallbackTagPose", m_usedFallbackPose);
+    frc::SmartDashboard::PutNumber("Auto/TargetTagId", m_targetTagId);
   }
 
   void Execute() override {
     const frc::Pose2d current = m_drive->GetPose();
 
-    const double vx = m_xPid.Calculate(current.X().value(), m_goalPose.X().value());
-    const double vy = m_yPid.Calculate(current.Y().value(), m_goalPose.Y().value());
-    const double omegaDegPerSec =
+    const double rawVx = m_xPid.Calculate(current.X().value(), m_goalPose.X().value());
+    const double rawVy = m_yPid.Calculate(current.Y().value(), m_goalPose.Y().value());
+    const double rawOmegaDegPerSec =
         m_thetaPid.Calculate(current.Rotation().Degrees().value(),
                              m_goalPose.Rotation().Degrees().value());
 
-    m_drive->Drive(units::meters_per_second_t{vx},
-                   units::meters_per_second_t{vy},
-                   units::radians_per_second_t{units::degrees_per_second_t{omegaDegPerSec}},
-                   true);
+    const auto clampedVx = units::meters_per_second_t{std::clamp(
+        rawVx, -DriveConstants::kMaxSpeed.value(), DriveConstants::kMaxSpeed.value())};
+    const auto clampedVy = units::meters_per_second_t{std::clamp(
+        rawVy, -DriveConstants::kMaxSpeed.value(), DriveConstants::kMaxSpeed.value())};
+
+    const auto maxOmegaDegPerSec =
+        units::degrees_per_second_t{DriveConstants::kMaxAngularSpeed};
+    const auto clampedOmega = units::radians_per_second_t{units::degrees_per_second_t{
+        std::clamp(rawOmegaDegPerSec, -maxOmegaDegPerSec.value(),
+                   maxOmegaDegPerSec.value())}};
+
+    m_drive->Drive(clampedVx, clampedVy, clampedOmega, true);
+
+    frc::SmartDashboard::PutNumber("Auto/GoalX_m", m_goalPose.X().value());
+    frc::SmartDashboard::PutNumber("Auto/GoalY_m", m_goalPose.Y().value());
+    frc::SmartDashboard::PutNumber("Auto/GoalRot_deg",
+                                   m_goalPose.Rotation().Degrees().value());
+    frc::SmartDashboard::PutNumber("Auto/ErrX_m",
+                                   (m_goalPose.X() - current.X()).value());
+    frc::SmartDashboard::PutNumber("Auto/ErrY_m",
+                                   (m_goalPose.Y() - current.Y()).value());
+    frc::SmartDashboard::PutNumber(
+        "Auto/ErrRot_deg",
+        (m_goalPose.Rotation() - current.Rotation()).Degrees().value());
 
     if (m_xPid.AtSetpoint() && m_yPid.AtSetpoint() && m_thetaPid.AtSetpoint()) {
       m_finished = true;
+      m_endReason = "AtSetpoint";
     }
   }
 
-  bool IsFinished() override { return m_finished || m_timer.Get() > 6_s; }
+  bool IsFinished() override {
+    if (m_finished) {
+      return true;
+    }
+
+    if (m_timer.Get() > 6_s) {
+      m_endReason = "Timeout";
+      return true;
+    }
+
+    return false;
+  }
 
   void End(bool interrupted) override {
     m_drive->Drive(0_mps, 0_mps, 0_rad_per_s, true);
+
+    if (interrupted) {
+      m_endReason = "Interrupted";
+    }
+
+    frc::SmartDashboard::PutString("Auto/EndReason", m_endReason);
+    fmt::print("AutoDriveToTagPose ended: {}\n", m_endReason);
   }
 
  private:
@@ -100,4 +152,6 @@ class AutoDriveToTagPose
 
   frc::Timer m_timer;
   bool m_finished{false};
+  bool m_usedFallbackPose{false};
+  std::string m_endReason{"NotStarted"};
 };
