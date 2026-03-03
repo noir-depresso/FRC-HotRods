@@ -17,6 +17,7 @@
 #include "subsystems/DriveSubsystem.h"
 #include "commands/AutoDriveForward.h"
 #include "commands/AutoDriveToTagPose.h"
+#include "commands/AutoDriveToFieldPoseSafe.h"
 #include <frc/RobotBase.h>
 
 #include "io/VisionIO.h"
