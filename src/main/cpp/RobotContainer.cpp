@@ -10,10 +10,14 @@
 #include <frc2/command/button/Trigger.h>
 #include <units/velocity.h>
 #include <units/angular_velocity.h>
+#include <frc/geometry/Transform2d.h>
+#include <frc/geometry/Translation2d.h>
 #include "RobotContainer.h"
 #include "Constants.h"
 #include "subsystems/DriveSubsystem.h"
 #include "commands/AutoDriveForward.h"
+#include "commands/AutoDriveToTagPose.h"
+#include "commands/AutoDriveToFieldPoseSafe.h"
 #include <frc/RobotBase.h>
 
 #include "io/VisionIO.h"
@@ -101,5 +105,19 @@ void RobotContainer::ConfigureButtonBindings() {
 
 
 frc2::Command* RobotContainer::GetAutonomousCommand() {
-  return new AutoDriveForward(&m_drive, 2_m);
+  // Field-goal autonomous using AprilTag-corrected robot pose.
+  // Goal can be any field location (example: near midfield lane).
+  constexpr frc::Pose2d kGoalPose{10.5_m, 4.1_m, 0_deg};
+
+  // Approximate circular keep-out around center obstacle/goal hub area.
+  constexpr frc::Translation2d kObstacleCenter{8.3_m, 4.1_m};
+  constexpr units::meter_t kObstacleRadius = 1.3_m;
+  constexpr units::meter_t kClearance = 0.7_m;
+
+  return new AutoDriveToFieldPoseSafe(
+      &m_drive,
+      kGoalPose,
+      kObstacleCenter,
+      kObstacleRadius,
+      kClearance);
 }
