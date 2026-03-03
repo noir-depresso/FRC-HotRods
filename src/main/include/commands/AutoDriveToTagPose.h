@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <frc/Timer.h>
 #include <frc/apriltag/AprilTagFieldLayout.h>
 #include <frc/controller/PIDController.h>
@@ -12,6 +13,7 @@
 #include <units/velocity.h>
 
 #include "subsystems/DriveSubsystem.h"
+#include "Constants.h"
 
 /**
  * Minimal autonomous command: drive to a fixed offset from a selected AprilTag.
@@ -43,6 +45,7 @@ class AutoDriveToTagPose
     auto maybeTagPose = fieldLayout.GetTagPose(m_targetTagId);
     if (maybeTagPose.has_value()) {
       m_goalPose = maybeTagPose.value().ToPose2d().TransformBy(m_robotOffsetFromTag);
+      std::cout<< " DETECTED A TAG YES YES YES YES ";
       fmt::print("Auto target tag {} -> goal X={:.2f}m Y={:.2f}m Rot={:.1f}deg\n",
                  m_targetTagId,
                  m_goalPose.X().value(),
@@ -50,7 +53,8 @@ class AutoDriveToTagPose
                  m_goalPose.Rotation().Degrees().value());
     } else {
       // Fallback keeps robot near center if configured tag is missing.
-      m_goalPose = frc::Pose2d{2.0_m, 2.0_m, 0_deg};
+      m_goalPose = frc::Pose2d{5.0_m, 5.0_m, 0_deg};
+      std::cout<< "CANT DETECT A TAG CANT CANT CANT CANT CANT FFFFFFFFFFF";
       fmt::print("Auto target tag {} not found in layout; fallback goal X={:.2f}m Y={:.2f}m Rot={:.1f}deg\n",
                  m_targetTagId,
                  m_goalPose.X().value(),
@@ -72,9 +76,18 @@ class AutoDriveToTagPose
         m_thetaPid.Calculate(current.Rotation().Degrees().value(),
                              m_goalPose.Rotation().Degrees().value());
 
-    m_drive->Drive(units::meters_per_second_t{vx},
-                   units::meters_per_second_t{vy},
-                   units::radians_per_second_t{units::degrees_per_second_t{omegaDegPerSec}},
+    // DriveSubsystem::Drive expects normalized [-1, 1] inputs.
+    const double xNorm = std::clamp(vx / DriveConstants::kMaxSpeed.value(), -1.0, 1.0);
+    const double yNorm = std::clamp(vy / DriveConstants::kMaxSpeed.value(), -1.0, 1.0);
+    const double rotNorm = std::clamp(
+        units::radians_per_second_t{units::degrees_per_second_t{omegaDegPerSec}}.value() /
+            DriveConstants::kMaxAngularSpeed.value(),
+        -1.0,
+        1.0);
+
+    m_drive->Drive(units::meters_per_second_t{xNorm},
+                   units::meters_per_second_t{yNorm},
+                   units::radians_per_second_t{rotNorm},
                    true);
 
     if (m_xPid.AtSetpoint() && m_yPid.AtSetpoint() && m_thetaPid.AtSetpoint()) {
