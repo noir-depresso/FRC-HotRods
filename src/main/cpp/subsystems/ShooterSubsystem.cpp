@@ -17,6 +17,10 @@ namespace {
 constexpr auto kEstimatedMaxFlywheelRpm = 5600.0;
 constexpr auto kEstimatedMaxHoodAngle = units::degree_t{55.0};
 constexpr int kRequiredStableCycles = 10;
+constexpr double kFlywheelRpmTolerance = 150.0;
+constexpr double kAimSettledPercent = 0.04;
+constexpr double kMaxHoodPercent = 0.45;
+constexpr double kMaxTurretPercent = 0.60;
 }  // namespace
 
 ShooterSubsystem::ShooterSubsystem()
@@ -50,9 +54,11 @@ ShooterSubsystem::ShooterSubsystem()
 }
 
 void ShooterSubsystem::Periodic() {
-  // "Stable" currently means all three axes are being commanded for long enough.
-  // This is a placeholder until encoder/absolute-angle based "at setpoint" checks exist.
-  if (m_flywheelCommanded && m_hoodCommanded && m_turretCommanded) {
+  m_measuredFlywheelRpm =
+      0.5 * (std::abs(m_drivingMotor1.GetEncoder().GetVelocity()) +
+             std::abs(m_drivingMotor2.GetEncoder().GetVelocity()));
+
+  if (AtFlywheelSetpoint() && AtHoodSetpoint() && AtTurretSetpoint()) {
     ++m_stableCycles;
   } else {
     m_stableCycles = 0;
@@ -66,25 +72,29 @@ void ShooterSubsystem::SetPercent(double percent) {
 
   m_drivingMotor1.Set(percent);
   m_drivingMotor2.Set(percent);
-  m_flywheelCommanded = (std::abs(percent) > 1e-6);
+  m_flywheelCommanded = (std::abs(percent) > 0.02);
+  m_targetFlywheelRpm =
+      units::revolutions_per_minute_t{std::abs(percent) * kEstimatedMaxFlywheelRpm};
 }
 
 void ShooterSubsystem::SetHoodPercent(double percent) {
   // Hood changes shot trajectory arc (vertical aiming).
   percent = frc::ApplyDeadband(percent, 0.02);
-  percent = std::clamp(percent, -1.0, 1.0);
+  percent = std::clamp(percent, -kMaxHoodPercent, kMaxHoodPercent);
 
   m_hoodMotor.Set(percent);
-  m_hoodCommanded = (std::abs(percent) > 1e-6);
+  m_lastHoodCmdPercent = percent;
+  m_hoodCommanded = true;
 }
 
 void ShooterSubsystem::SetTurretPercent(double percent) {
   // Turret rotates the whole shooter + camera assembly (horizontal aiming).
   percent = frc::ApplyDeadband(percent, 0.02);
-  percent = std::clamp(percent, -1.0, 1.0);
+  percent = std::clamp(percent, -kMaxTurretPercent, kMaxTurretPercent);
 
   m_turretMotor.Set(percent);
-  m_turretCommanded = (std::abs(percent) > 1e-6);
+  m_lastTurretCmdPercent = percent;
+  m_turretCommanded = true;
 }
 
 void ShooterSubsystem::SpinDrivingMotors() { SetPercent(+0.75); }
@@ -93,15 +103,18 @@ void ShooterSubsystem::StopDrivingMotors() {
   m_drivingMotor1.StopMotor();
   m_drivingMotor2.StopMotor();
   m_flywheelCommanded = false;
+  m_targetFlywheelRpm = units::revolutions_per_minute_t{0.0};
 }
 
 void ShooterSubsystem::StopHoodMotor() {
   m_hoodMotor.StopMotor();
+  m_lastHoodCmdPercent = 0.0;
   m_hoodCommanded = false;
 }
 
 void ShooterSubsystem::StopTurretMotor() {
   m_turretMotor.StopMotor();
+  m_lastTurretCmdPercent = 0.0;
   m_turretCommanded = false;
 }
 
@@ -112,10 +125,13 @@ void ShooterSubsystem::StopAll() {
 }
 
 void ShooterSubsystem::SetFlywheelRPM(units::revolutions_per_minute_t rpm) {
-  m_targetFlywheelRpm = rpm;
+  const auto clampedRpm = units::revolutions_per_minute_t{
+      std::clamp(rpm.value(), 0.0, kEstimatedMaxFlywheelRpm)};
+  m_targetFlywheelRpm = clampedRpm;
   // Open-loop estimate only. Real closed-loop RPM control should use velocity feedback.
-  const double duty = std::clamp(rpm.value() / kEstimatedMaxFlywheelRpm, -1.0, 1.0);
+  const double duty = std::clamp(clampedRpm.value() / kEstimatedMaxFlywheelRpm, 0.0, 1.0);
   SetPercent(duty);
+  m_targetFlywheelRpm = clampedRpm;
 }
 
 void ShooterSubsystem::SetHoodAngle(units::radian_t angle) {
@@ -127,18 +143,21 @@ void ShooterSubsystem::SetHoodAngle(units::radian_t angle) {
 }
 
 bool ShooterSubsystem::AtFlywheelSetpoint() const {
-  // Placeholder readiness behavior until encoder velocity feedback is wired.
-  return m_flywheelCommanded;
+  if (!m_flywheelCommanded) {
+    return false;
+  }
+  return std::abs(m_measuredFlywheelRpm - m_targetFlywheelRpm.value()) <=
+         kFlywheelRpmTolerance;
 }
 
 bool ShooterSubsystem::AtHoodSetpoint() const {
-  // Placeholder readiness behavior until hood angle feedback is wired.
-  return m_hoodCommanded;
+  return m_hoodCommanded &&
+         (std::abs(m_lastHoodCmdPercent) <= kAimSettledPercent);
 }
 
 bool ShooterSubsystem::AtTurretSetpoint() const {
-  // Placeholder readiness behavior until turret angle feedback is wired.
-  return m_turretCommanded;
+  return m_turretCommanded &&
+         (std::abs(m_lastTurretCmdPercent) <= kAimSettledPercent);
 }
 
 bool ShooterSubsystem::IsReadyToShoot(bool hasValidTarget) const {

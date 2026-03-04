@@ -1,12 +1,21 @@
 #include "subsystems/ShootingAutoAim.h"
 
 #include <algorithm>
+#include <cmath>
 #include <utility>
 
 #include <frc/DriverStation.h>
 
 #include "LimelightHelpers.h"
 #include "subsystems/ShooterSubsystem.h"
+
+namespace {
+constexpr int kNoTargetDelayCycles = 30;  // ~0.6s at 20ms loop
+constexpr double kSearchTurretPercent = 0.15;
+constexpr double kLoopPeriodSec = 0.02;
+// Estimated turret speed at 100% command (deg/s), used only for search cutoff.
+constexpr double kEstimatedTurretDegPerSecAtFull = 360.0;
+}  // namespace
 
 ShootingAutoAim::ShootingAutoAim(std::string limelightName)
     : m_ll(std::move(limelightName)),
@@ -26,6 +35,9 @@ void ShootingAutoAim::Initialize() {
   m_hoodPID.Reset();
   m_lastBestId = -1;
   m_loggedNoTarget = false;
+  m_noTargetCycles = 0;
+  m_searchCompleted = false;
+  m_searchAccumulatedDeg = 0.0;
   LimelightHelpers::SetFiducialIDFiltersOverride(m_ll, m_centerIDs);
 }
 
@@ -33,6 +45,9 @@ void ShootingAutoAim::End() {
   m_lastBestId = -1;
   m_turretPID.Reset();
   m_hoodPID.Reset();
+  m_noTargetCycles = 0;
+  m_searchCompleted = false;
+  m_searchAccumulatedDeg = 0.0;
 }
 
 bool ShootingAutoAim::HasValidTarget() const {
@@ -40,14 +55,29 @@ bool ShootingAutoAim::HasValidTarget() const {
 }
 
 void ShootingAutoAim::UpdateAim(ShooterSubsystem& shooter) {
-  // Hard fail-safe: no target means both aim axes are stopped.
   if (!LimelightHelpers::getTV(m_ll)) {
-    shooter.StopTurretMotor();
+    ++m_noTargetCycles;
     shooter.StopHoodMotor();
+
+    if (!m_searchCompleted && m_noTargetCycles > kNoTargetDelayCycles) {
+      shooter.SetTurretPercent(kSearchTurretPercent);
+      m_searchAccumulatedDeg += std::abs(kSearchTurretPercent) *
+                                kEstimatedTurretDegPerSecAtFull * kLoopPeriodSec;
+      if (m_searchAccumulatedDeg >= 360.0) {
+        shooter.StopTurretMotor();
+        m_searchCompleted = true;
+      }
+    } else {
+      shooter.StopTurretMotor();
+    }
+
     m_loggedNoTarget = true;
     return;
   }
 
+  m_noTargetCycles = 0;
+  m_searchCompleted = false;
+  m_searchAccumulatedDeg = 0.0;
   m_loggedNoTarget = false;
 
   const auto bestTag = SelectBestTag();
@@ -126,16 +156,16 @@ void ShootingAutoAim::UpdateAllianceTagIDs() {
   if (alliance && alliance.value() == frc::DriverStation::Alliance::kRed) {
     m_centerIDs = {8, 9, 10, 11, 2, 5};
     m_targetOffsetsByTag = {
-        {18, {.txDeg = 0.0, .tyDeg = -1.0}}, {19, {.txDeg = -0.8, .tyDeg = -0.7}},
-        {20, {.txDeg = 0.6, .tyDeg = -0.9}}, {21, {.txDeg = 0.0, .tyDeg = -0.6}},
-        {24, {.txDeg = -0.4, .tyDeg = -1.2}}, {27, {.txDeg = 0.7, .tyDeg = -1.0}}};
+        {8, {.txDeg = 0.0, .tyDeg = -1.0}}, {9, {.txDeg = 0.8, .tyDeg = -0.7}},
+        {10, {.txDeg = -0.6, .tyDeg = -0.9}}, {11, {.txDeg = 0.0, .tyDeg = -0.6}},
+        {2, {.txDeg = 0.4, .tyDeg = -1.2}}, {5, {.txDeg = -0.7, .tyDeg = -1.0}}};
   } else {
     // Default to blue set when alliance is unavailable.
     // Tune these values on-robot; they are initial aiming offsets only.
     m_centerIDs = {18, 19, 20, 21, 24, 27};
     m_targetOffsetsByTag = {
-        {8, {.txDeg = 0.0, .tyDeg = -1.0}}, {9, {.txDeg = 0.8, .tyDeg = -0.7}},
-        {10, {.txDeg = -0.6, .tyDeg = -0.9}}, {11, {.txDeg = 0.0, .tyDeg = -0.6}},
-        {2, {.txDeg = 0.4, .tyDeg = -1.2}}, {5, {.txDeg = -0.7, .tyDeg = -1.0}}};
+        {18, {.txDeg = 0.0, .tyDeg = -1.0}}, {19, {.txDeg = -0.8, .tyDeg = -0.7}},
+        {20, {.txDeg = 0.6, .tyDeg = -0.9}}, {21, {.txDeg = 0.0, .tyDeg = -0.6}},
+        {24, {.txDeg = -0.4, .tyDeg = -1.2}}, {27, {.txDeg = 0.7, .tyDeg = -1.0}}};
   }
 }

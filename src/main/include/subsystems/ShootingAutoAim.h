@@ -42,4 +42,7 @@ class ShootingAutoAim {
   frc::PIDController m_hoodPID;
   int m_lastBestId{-1};
   bool m_loggedNoTarget{false};
+  int m_noTargetCycles{0};
+  bool m_searchCompleted{false};
+  double m_searchAccumulatedDeg{0.0};
 };

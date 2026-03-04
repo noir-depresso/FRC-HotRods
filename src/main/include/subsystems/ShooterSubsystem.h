@@ -45,6 +45,9 @@ class ShooterSubsystem : public frc2::SubsystemBase {
   bool m_flywheelCommanded = false;
   bool m_hoodCommanded = false;
   bool m_turretCommanded = false;
+  double m_lastHoodCmdPercent = 0.0;
+  double m_lastTurretCmdPercent = 0.0;
+  double m_measuredFlywheelRpm = 0.0;
   int m_stableCycles = 0;
   units::revolutions_per_minute_t m_targetFlywheelRpm{0.0};
   units::radian_t m_targetHoodAngle{0.0};

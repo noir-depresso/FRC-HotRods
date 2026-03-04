@@ -158,20 +158,8 @@ void DriveSubsystem::Drive(units::meters_per_second_t xSpeed,
 }
 
 void DriveSubsystem::DriveRobotRelative(const frc::ChassisSpeeds& speeds) {
-  // Helper used by path following code paths that already operate in robot frame.
-  auto states = kDriveKinematics.ToSwerveModuleStates(speeds);
-  kDriveKinematics.DesaturateWheelSpeeds(&states, DriveConstants::kMaxSpeed);
-
-  auto [fl, fr, bl, br] = states;
-
-  m_frontLeft.SetDesiredState(fl);
-  m_frontRight.SetDesiredState(fr);
-  m_rearLeft.SetDesiredState(bl);
-  m_rearRight.SetDesiredState(br);
-
-  m_lastXSpeed = speeds.vx.value();
-  m_lastYSpeed = speeds.vy.value();
-  m_lastRot = speeds.omega.value();
+  // Single-path implementation: robot-relative speeds are Drive(..., false).
+  Drive(speeds.vx, speeds.vy, speeds.omega, false);
 }
 
 void DriveSubsystem::SetX() {

@@ -101,12 +101,6 @@ try {
         [this](const frc::Pose2d& pose) { m_drive.ResetOdometry(pose); },
         [this]() { return m_drive.GetRobotRelativeSpeeds(); },
         [this](const frc::ChassisSpeeds& speeds) {
-            // WATCH OUT: this currently calls both Drive(...) and DriveRobotRelative(...)
-            // with the same speeds. Validate this on-robot; many drivetrains should use
-            // only one path to avoid double-applying commands.
-            m_drive.Drive(speeds.vx, speeds.vy, speeds.omega, false);
-            // AutoBuilder gives real robot-relative velocities. Send those
-            // directly to the drivetrain without joystick normalization.
             m_drive.DriveRobotRelative(speeds);
         },
         std::make_shared<pathplanner::PPHolonomicDriveController>(
@@ -117,7 +111,7 @@ try {
         []() {
             auto alliance = frc::DriverStation::GetAlliance();
             return alliance &&
-                   alliance.value() == frc::DriverStation::Alliance::kBlue;
+                   alliance.value() == frc::DriverStation::Alliance::kRed;
         },
         &m_drive
     );
@@ -129,19 +123,19 @@ try {
 }
 
 void RobotContainer::ConfigureButtonBindings() {
-  frc2::JoystickButton(&m_driverController, 6).OnTrue(new frc2::InstantCommand([this] {
+  frc2::JoystickButton(&m_driverController, 6).OnTrue(frc2::InstantCommand([this] {
     LogEvent("Button 6 pressed: X-lock enabled");
-  }));
+  }).ToPtr());
 
-  frc2::JoystickButton(&m_driverController, 6).OnFalse(new frc2::InstantCommand([this] {
+  frc2::JoystickButton(&m_driverController, 6).OnFalse(frc2::InstantCommand([this] {
     LogEvent("Button 6 released: X-lock disabled");
-  }));
+  }).ToPtr());
 
   frc2::JoystickButton(&m_driverController, 6)
-      .WhileTrue(new frc2::RunCommand([this] { m_drive.SetX(); }, {&m_drive}));
+      .WhileTrue(frc2::RunCommand([this] { m_drive.SetX(); }, {&m_drive}).ToPtr());
 
        // Schedule ExampleCommand when exampleCondition changes to true
- frc2::JoystickButton(&m_driverController, 4).OnTrue(new frc2::InstantCommand([this] {
+ frc2::JoystickButton(&m_driverController, 4).OnTrue(frc2::InstantCommand([this] {
     LogEvent("Button 4 pressed: toggling intake");
     m_intakeRunning = !m_intakeRunning;
 
@@ -149,9 +143,9 @@ void RobotContainer::ConfigureButtonBindings() {
             m_intake.In();
         else
             m_intake.Stop();
-    }));
+    }).ToPtr());
 
-     frc2::JoystickButton(&m_driverController, 1).OnTrue(new frc2::InstantCommand([this] {
+     frc2::JoystickButton(&m_driverController, 1).OnTrue(frc2::InstantCommand([this] {
     LogEvent("Button 1 pressed: toggling shooter flywheels");
     m_shooterDriveRunning = !m_shooterDriveRunning;
 
@@ -159,9 +153,9 @@ void RobotContainer::ConfigureButtonBindings() {
             m_shooter.SpinDrivingMotors();
         else
             m_shooter.StopDrivingMotors();
-    }));
+    }).ToPtr());
 
-     frc2::JoystickButton(&m_driverController, 3).OnTrue(new frc2::InstantCommand([this] {
+     frc2::JoystickButton(&m_driverController, 3).OnTrue(frc2::InstantCommand([this] {
     LogEvent("Button 3 pressed: toggling auto-aim mode");
     m_autoAimEnabled = !m_autoAimEnabled;
 
@@ -172,16 +166,16 @@ void RobotContainer::ConfigureButtonBindings() {
             m_shooter.StopTurretMotor();
             m_shooter.StopHoodMotor();
         }
-    }));
+    }).ToPtr());
 
-    frc2::JoystickButton(&m_driverController, 2).OnTrue(new frc2::InstantCommand([this] {
+    frc2::JoystickButton(&m_driverController, 2).OnTrue(frc2::InstantCommand([this] {
     m_shooterTurnRunning = !m_shooterTurnRunning;
 
         if (m_shooterTurnRunning)
             m_shooter.SetHoodPercent(+0.25);
         else
             m_shooter.StopHoodMotor();
-    }));
+    }).ToPtr());
 
   frc2::JoystickButton(&m_driverController, 5)
     .OnTrue(frc2::InstantCommand([this] { m_pistonSubsystem.Toggle(); }, {&m_pistonSubsystem}).ToPtr());
@@ -193,9 +187,7 @@ void RobotContainer::ConfigureButtonBindings() {
   frc2::JoystickButton(&m_driverController, 8)
     .OnTrue(frc2::InstantCommand([this] { m_pistonSubsystem.Retract(); }, {&m_pistonSubsystem}).ToPtr());
 
-    frc2::JoystickButton(&m_driverController, 10).OnTrue(new frc2::InstantCommand([this] {
-    // WATCH OUT: this shares button 3 with auto-aim toggle above.
-    // Both actions fire on the same press unless remapped.
+    frc2::JoystickButton(&m_driverController, 10).OnTrue(frc2::InstantCommand([this] {
     m_aprilTagDirectionRunning = !m_aprilTagDirectionRunning;
     m_intake.EnableAprilTagDirectionControl(m_aprilTagDirectionRunning);
 
@@ -205,7 +197,7 @@ void RobotContainer::ConfigureButtonBindings() {
             m_intakeRunning = false;
             m_intake.Stop();
         }
-    }));
+    }).ToPtr());
 
 
 

@@ -24,9 +24,8 @@ void PistonSubsystem::Off() {
 }
 
 void PistonSubsystem::Toggle() {
-    // Watch out: Toggle changes hardware state directly but does not update
-    // m_state. If you rely on IsExtended() after Toggle(), sync m_state first.
     m_solenoid.Toggle();
+    m_state = m_solenoid.Get();
 }
 
 bool PistonSubsystem::IsExtended() const {
