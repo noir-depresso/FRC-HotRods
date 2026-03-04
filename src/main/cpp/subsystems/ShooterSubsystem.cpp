@@ -3,6 +3,7 @@
 #include "subsystems/ShooterSubsystem.h"
 
 #include <algorithm>
+#include <cmath>
 
 #include <frc/MathUtil.h>
 #include <rev/SparkMax.h>
@@ -54,21 +55,63 @@ void ShooterSubsystem::SetPercent(double percent) {
 
   m_drivingMotor1.Set(percent);
   m_drivingMotor2.Set(percent);
-
+  m_flywheelCommanded = (std::abs(percent) > 1e-6);
 }
 
-void ShooterSubsystem::SetTurnPercent(double percent) {
+void ShooterSubsystem::SetHoodPercent(double percent) {
   percent = frc::ApplyDeadband(percent, 0.02);
   percent = std::clamp(percent, -1.0, 1.0);
 
   m_turningMotor.Set(percent);
+  m_hoodCommanded = (std::abs(percent) > 1e-6);
 }
 
-void ShooterSubsystem::SpinDrivingMotors()  { SetPercent(+0.75); }
-//void ShooterSubsystem::SpinTurningMotor()  { SetPercent(+0.5, 2); }
-// void ShooterSubsystem::Out() { SetPercent(-0.35); } // usually slower outtake
+void ShooterSubsystem::SetTurnPercent(double percent) { SetHoodPercent(percent); }
+
+void ShooterSubsystem::SpinDrivingMotors() { SetPercent(+0.75); }
+
 void ShooterSubsystem::StopDrivingMotors() {
   m_drivingMotor1.StopMotor();
   m_drivingMotor2.StopMotor();
+  m_flywheelCommanded = false;
 }
-void ShooterSubsystem::StopTurningMotor() { m_turningMotor.StopMotor(); }
+
+void ShooterSubsystem::StopHoodMotor() {
+  m_turningMotor.StopMotor();
+  m_hoodCommanded = false;
+}
+
+void ShooterSubsystem::StopTurningMotor() { StopHoodMotor(); }
+
+void ShooterSubsystem::StopAll() {
+  StopDrivingMotors();
+  StopHoodMotor();
+}
+
+void ShooterSubsystem::SetFlywheelRPM(units::revolutions_per_minute_t rpm) {
+  m_targetFlywheelRpm = rpm;
+  const double duty = std::clamp(rpm.value() / kEstimatedMaxFlywheelRpm, -1.0, 1.0);
+  SetPercent(duty);
+}
+
+void ShooterSubsystem::SetHoodAngle(units::radian_t angle) {
+  m_targetHoodAngle = angle;
+  const double duty =
+      std::clamp((angle / kEstimatedMaxHoodAngle).value(), -1.0, 1.0);
+  SetHoodPercent(duty);
+}
+
+bool ShooterSubsystem::AtFlywheelSetpoint() const {
+  // Placeholder readiness behavior until encoder velocity feedback is wired.
+  return m_flywheelCommanded;
+}
+
+bool ShooterSubsystem::AtHoodSetpoint() const {
+  // Placeholder readiness behavior until hood angle feedback is wired.
+  return m_hoodCommanded;
+}
+
+bool ShooterSubsystem::IsReadyToShoot(bool hasValidTarget) const {
+  return hasValidTarget && AtFlywheelSetpoint() && AtHoodSetpoint() &&
+         (m_stableCycles >= kRequiredStableCycles);
+}

@@ -124,14 +124,14 @@ void DriveSubsystem::Drive(units::meters_per_second_t xSpeed,
       rot, -DriveConstants::kMaxAngularSpeed, DriveConstants::kMaxAngularSpeed);
 
   if (fieldRelative) {
-    m_lastFieldXSpeed = xSpeedDelivered.value();
-    m_lastFieldYSpeed = ySpeedDelivered.value();
+    m_lastXSpeed  = xSpeedDelivered.value();
+    m_lastYSpeed  = ySpeedDelivered.value();
   } else {
     const frc::ChassisSpeeds fieldSpeeds = frc::ChassisSpeeds::FromRobotRelativeSpeeds(
         frc::ChassisSpeeds{xSpeedDelivered, ySpeedDelivered, rotDelivered},
         GetRotation2d());
-    m_lastFieldXSpeed = fieldSpeeds.vx.value();
-    m_lastFieldYSpeed = fieldSpeeds.vy.value();
+    m_lastXSpeed  = fieldSpeeds.vx.value();
+    m_lastYSpeed  = fieldSpeeds.vy.value();
   }
   m_lastRot = rotDelivered.value();
 
@@ -318,8 +318,8 @@ if (frc::RobotBase::IsSimulation()) {
     constexpr double kDt = 0.02;
 
     pose = frc::Pose2d{
-        pose.X() + units::meter_t{m_lastFieldXSpeed * kDt},
-        pose.Y() + units::meter_t{m_lastFieldYSpeed * kDt},
+        pose.X() + units::meter_t{m_lastXSpeed  * kDt},
+        pose.Y() + units::meter_t{m_lastYSpeed  * kDt},
         pose.Rotation() + frc::Rotation2d{units::radian_t{m_lastRot * kDt}}
     };
 

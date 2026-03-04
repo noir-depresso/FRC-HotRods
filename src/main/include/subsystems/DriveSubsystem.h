@@ -146,7 +146,7 @@ class DriveSubsystem : public frc2::SubsystemBase {
   nt::StructPublisher<frc::Pose3d> m_pose3dPub;
 
   // Last commanded field-frame speeds (for sim visualization integration).
-  double m_lastFieldXSpeed = 0.0;  // meters per second
-  double m_lastFieldYSpeed = 0.0;  // meters per second
-  double m_lastRot = 0.0;          // radians per second
+  double m_lastXSpeed = 0.0;   // meters per second
+    double m_lastYSpeed = 0.0;   // meters per second
+    double m_lastRot   = 0.0;   // radians per second
 };

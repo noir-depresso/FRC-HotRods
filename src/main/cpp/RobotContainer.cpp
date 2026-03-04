@@ -29,6 +29,7 @@
 #include <pathplanner/lib/auto/AutoBuilder.h>
 #include <pathplanner/lib/config/RobotConfig.h>
 #include <pathplanner/lib/controllers/PPHolonomicDriveController.h>
+#include <pathplanner/lib/commands/PathPlannerAuto.h>
 #include <frc/DriverStation.h>
 #include <pathplanner/lib/auto/NamedCommands.h>
 
@@ -223,5 +224,5 @@ frc2::CommandPtr RobotContainer::GetAutonomousCommand() {
 //       kObstacleRadius,
 //       kClearance);
 
-return pathplanner::AutoBuilder::buildAuto("Auto 2");
+return pathplanner::PathPlannerAuto("Auto 2").ToPtr();
 }
