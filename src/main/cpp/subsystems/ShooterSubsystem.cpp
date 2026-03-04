@@ -40,7 +40,8 @@ constexpr double kHoodD = 0.0;
 constexpr double kTurretP = 0.18;
 constexpr double kTurretI = 0.0;
 constexpr double kTurretD = 0.0;
-constexpr double kTurretToleranceMotorRot = 0.08;
+constexpr double kTurretGearRatio = 32.4;  // motor rotations / turret rotation
+constexpr units::radian_t kTurretTolerance = units::degree_t{1.5};
 }  // namespace
 
 ShooterSubsystem::ShooterSubsystem()
@@ -52,14 +53,6 @@ ShooterSubsystem::ShooterSubsystem()
                     rev::spark::SparkMax::MotorType::kBrushless),
       m_hoodMotor(DriveConstants::kShooterHood,
                   rev::spark::SparkMax::MotorType::kBrushless) {
-  // Shared conservative config for all shooter motors.
-  // Watch out: brake mode on hood/turret increases holding torque, but can raise current/heat.
- rev::spark::SparkMaxConfig sharedConfig;
-  sharedConfig.SetIdleMode(rev::spark::SparkBaseConfig::IdleMode::kBrake);
-  sharedConfig.SmartCurrentLimit(40);
-  sharedConfig.OpenLoopRampRate(0.10);
-  sharedConfig.VoltageCompensation(12.0);
-
   rev::spark::SparkMaxConfig flywheelConfig;
   flywheelConfig.SetIdleMode(rev::spark::SparkBaseConfig::IdleMode::kBrake);
   flywheelConfig.SmartCurrentLimit(40);
@@ -97,6 +90,9 @@ ShooterSubsystem::ShooterSubsystem()
   turretConfig.SmartCurrentLimit(40);
   turretConfig.OpenLoopRampRate(0.10);
   turretConfig.VoltageCompensation(12.0);
+  turretConfig.encoder
+      .PositionConversionFactor((2.0 * std::numbers::pi) / kTurretGearRatio)
+      .VelocityConversionFactor(((2.0 * std::numbers::pi) / kTurretGearRatio) / 60.0);
   turretConfig.closedLoop
       .SetFeedbackSensor(rev::spark::FeedbackSensor::kPrimaryEncoder)
       .Pid(kTurretP, kTurretI, kTurretD)
@@ -104,19 +100,17 @@ ShooterSubsystem::ShooterSubsystem()
 
   m_turretMotor.Configure(turretConfig, rev::ResetMode::kResetSafeParameters,
                           rev::PersistMode::kPersistParameters);
-
   m_hoodMotor.Configure(hoodConfig, rev::ResetMode::kResetSafeParameters,
                         rev::PersistMode::kPersistParameters);
 }
 
 void ShooterSubsystem::Periodic() {
-
-  if (m_flywheelCommanded && m_hoodCommanded && m_turretCommanded) {
+  if (AtFlywheelSetpoint() && AtHoodSetpoint() && AtTurretSetpoint()) {
     ++m_stableCycles;
   } else {
     m_stableCycles = 0;
   }
-  
+
   if (AtFlywheelSetpoint()) {
     ++m_flywheelAtSetpointCycles;
   } else {
@@ -135,11 +129,13 @@ void ShooterSubsystem::Periodic() {
   frc::SmartDashboard::PutNumber("Shooter/FlywheelTargetRpm",
                                  m_targetFlywheelRpm.value());
   frc::SmartDashboard::PutNumber("Shooter/FlywheelActualRpm", actualFlywheelRpm.value());
-  frc::SmartDashboard::PutNumber("Shooter/TurretTargetMotorRot",
-                                 m_targetTurretMotorRot);
-  frc::SmartDashboard::PutNumber("Shooter/TurretActualMotorRot",
-                                 m_turretEncoder.GetPosition());
+  frc::SmartDashboard::PutNumber("Shooter/TurretTargetDeg",
+                                 units::degree_t{m_targetTurretAngle}.value());
+  frc::SmartDashboard::PutNumber(
+      "Shooter/TurretActualDeg",
+      units::degree_t{units::radian_t{m_turretEncoder.GetPosition()}}.value());
 }
+
 
 void ShooterSubsystem::SetPercent(double percent) {
   // Deadband removes joystick noise and prevents idle motor buzz.
@@ -148,7 +144,7 @@ void ShooterSubsystem::SetPercent(double percent) {
 
   m_drivingMotor1.Set(percent);
   m_drivingMotor2.Set(percent);
-    m_flywheelClosedLoopActive = false;
+  m_flywheelClosedLoopActive = false;
   m_flywheelCommanded = (std::abs(percent) > 1e-6);
 }
 
@@ -157,7 +153,7 @@ void ShooterSubsystem::SetHoodPercent(double percent) {
   percent = frc::ApplyDeadband(percent, 0.02);
   percent = std::clamp(percent, -1.0, 1.0);
 
- const units::radian_t hoodAngle{m_hoodAbsoluteEncoder.GetPosition()};
+  const units::radian_t hoodAngle{m_hoodAbsoluteEncoder.GetPosition()};
   if ((hoodAngle <= kHoodMinAngle && percent < 0.0) ||
       (hoodAngle >= kHoodMaxAngle && percent > 0.0)) {
     percent = 0.0;
@@ -174,39 +170,40 @@ void ShooterSubsystem::SetTurretPercent(double percent) {
   percent = std::clamp(percent, -1.0, 1.0);
 
   m_turretMotor.Set(percent);
-    m_turretClosedLoopActive = false;
+  m_turretClosedLoopActive = false;
   m_turretCommanded = (std::abs(percent) > 1e-6);
 }
 
-void ShooterSubsystem::SetTurretAngleMotorRot(double motorRot) {
-  m_targetTurretMotorRot = motorRot;
+void ShooterSubsystem::SetTurretAngle(units::radian_t angle) {
+  m_targetTurretAngle = angle;
   m_turretClosedLoopActive = true;
-  m_turretController.SetSetpoint(m_targetTurretMotorRot,
+  m_turretController.SetSetpoint(m_targetTurretAngle.value(),
                                  rev::spark::SparkMax::ControlType::kPosition);
   m_turretCommanded = true;
 }
 
-void ShooterSubsystem::NudgeTurretAngleMotorRot(double deltaMotorRot) {
-  SetTurretAngleMotorRot(m_turretEncoder.GetPosition() + deltaMotorRot);
+void ShooterSubsystem::NudgeTurretAngle(units::radian_t deltaAngle) {
+  SetTurretAngle(units::radian_t{m_turretEncoder.GetPosition()} + deltaAngle);
 }
 
 void ShooterSubsystem::ZeroTurretEncoder() {
   m_turretEncoder.SetPosition(0.0);
-  m_targetTurretMotorRot = 0.0;
+  m_targetTurretAngle = 0_rad;
 }
+
 
 void ShooterSubsystem::SpinDrivingMotors() { SetPercent(+0.75); }
 
 void ShooterSubsystem::StopDrivingMotors() {
   m_drivingMotor1.StopMotor();
   m_drivingMotor2.StopMotor();
-    m_flywheelClosedLoopActive = false;
+  m_flywheelClosedLoopActive = false;
   m_flywheelCommanded = false;
 }
 
 void ShooterSubsystem::StopHoodMotor() {
   m_hoodMotor.StopMotor();
-    m_hoodClosedLoopActive = false;
+  m_hoodClosedLoopActive = false;
   m_hoodCommanded = false;
 }
 
@@ -262,8 +259,8 @@ bool ShooterSubsystem::AtTurretSetpoint() const {
     return m_turretCommanded;
   }
 
-  return std::abs(m_turretEncoder.GetPosition() - m_targetTurretMotorRot) <=
-         kTurretToleranceMotorRot;
+  return units::math::abs(units::radian_t{m_turretEncoder.GetPosition()} -
+                           m_targetTurretAngle) <= kTurretTolerance;
 }
 
 bool ShooterSubsystem::IsReadyToShoot(bool hasValidTarget) const {

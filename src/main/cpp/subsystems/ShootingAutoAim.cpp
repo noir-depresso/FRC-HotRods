@@ -22,11 +22,11 @@ namespace {
 // Initial ballistic model constants; tune on-robot with real release geometry.
 constexpr units::meter_t kGoalCenterOffsetX = 0.595_m;
 constexpr units::meter_t kGoalRelativeHeight = 1.83_m;
-constexpr units::meters_per_second_t kNominalLaunchSpeed = 12.0_mps;
+constexpr units::meters_per_second_t kNominalLaunchSpeed = 6.0_mps; // 12.0
 constexpr bool kPreferHighArc = false;
 constexpr auto kHoodVerticalReference = units::degree_t{90.0};
 constexpr auto kHoodForwardLimit = units::degree_t{32.0};
-constexpr double kTurretStepMotorRotPerLoop = 0.18;
+constexpr auto kTurretStepPerLoop = units::degree_t{1.8}; // speed of turret rotation
 
 std::optional<frc::Translation2d> ComputeAllianceGoalCenter(
     const std::vector<int>& targetTags) {
@@ -101,8 +101,8 @@ bool ShootingAutoAim::HasValidTarget() const {
 void ShootingAutoAim::UpdateAim(ShooterSubsystem& shooter) {
   // Hard fail-safe: no target means both aim axes are stopped.
   if (!LimelightHelpers::getTV(m_ll)) {
-     if (const auto preAimCmd = ComputePosePreAimTurretCommand(); preAimCmd.has_value()) {
-      shooter.SetTurretPercent(preAimCmd.value());
+     if (const auto preAimAngle = ComputePosePreAimTurretCommand(); preAimAngle.has_value()) {
+      shooter.SetTurretAngle(preAimAngle.value());
     } else {
       shooter.StopTurretMotor();
     }
@@ -138,7 +138,7 @@ void ShootingAutoAim::UpdateAim(ShooterSubsystem& shooter) {
   // Clamp protects mechanism and prevents aggressive oscillation.
   turretCmd = std::clamp(turretCmd, -0.6, 0.6);
 
-  shooter.NudgeTurretAngleMotorRot(turretCmd * kTurretStepMotorRotPerLoop);
+  shooter.NudgeTurretAngle(kTurretStepPerLoop * turretCmd);
 
   const auto solvedTheta = CalculateBallisticHoodAngle();
   if (solvedTheta.has_value()) {
@@ -184,7 +184,7 @@ std::optional<units::radian_t> ShootingAutoAim::CalculateBallisticHoodAngle() co
   return std::nullopt;
 }
 
-std::optional<double> ShootingAutoAim::ComputePosePreAimTurretCommand() {
+std::optional<units::radian_t> ShootingAutoAim::ComputePosePreAimTurretCommand() {
   const frc::Pose2d pose = m_drive.GetPose();
 
   if (!m_allianceGoalCenter.has_value()) {
@@ -193,7 +193,6 @@ std::optional<double> ShootingAutoAim::ComputePosePreAimTurretCommand() {
 
   const units::meter_t dx = m_allianceGoalCenter->X() - pose.X();
   const units::meter_t dy = m_allianceGoalCenter->Y() - pose.Y();
-
   const double distSq = (dx.value() * dx.value()) + (dy.value() * dy.value());
   if (distSq < 1e-4) {
     return std::nullopt;
@@ -203,11 +202,8 @@ std::optional<double> ShootingAutoAim::ComputePosePreAimTurretCommand() {
   const units::radian_t robotHeading = pose.Rotation().Radians();
   const units::radian_t robotRelativeError =
       frc::AngleModulus(fieldBearing - robotHeading);
-  const double robotRelativeErrorDeg = units::degree_t{robotRelativeError}.value();
-
-  double cmd = m_poseTurretPID.Calculate(0.0, robotRelativeErrorDeg);
-  cmd = std::clamp(cmd, -0.35, 0.35);
-  return cmd;
+  // Command turret absolute angle relative to robot-forward reference.
+  return robotRelativeError;
 }
 
 
@@ -252,6 +248,7 @@ std::optional<ShootingAutoAim::AimOffsets> ShootingAutoAim::GetAimOffsets(
 void ShootingAutoAim::UpdateAllianceTagIDs() {
   const auto alliance = frc::DriverStation::GetAlliance();
   if (alliance && alliance.value() == frc::DriverStation::Alliance::kRed) {
+    // 2026 field target tags on the red end.
     m_centerIDs = {8, 9, 10, 11, 2, 5};
     m_targetOffsetsByTag = {
         {8, {.txDeg = 0.0, .tyDeg = -1.0}}, {9, {.txDeg = 0.8, .tyDeg = -0.7}},
@@ -259,13 +256,12 @@ void ShootingAutoAim::UpdateAllianceTagIDs() {
         {2, {.txDeg = 0.4, .tyDeg = -1.2}}, {5, {.txDeg = -0.7, .tyDeg = -1.0}}};
   } else {
     // Default to blue set when alliance is unavailable.
-    // Tune these values on-robot; they are initial aiming offsets only.
     m_centerIDs = {18, 19, 20, 21, 24, 27};
     m_targetOffsetsByTag = {
         {18, {.txDeg = 0.0, .tyDeg = -1.0}}, {19, {.txDeg = -0.8, .tyDeg = -0.7}},
         {20, {.txDeg = 0.6, .tyDeg = -0.9}}, {21, {.txDeg = 0.0, .tyDeg = -0.6}},
         {24, {.txDeg = -0.4, .tyDeg = -1.2}}, {27, {.txDeg = 0.7, .tyDeg = -1.0}}};
   }
-  
+
   m_allianceGoalCenter = ComputeAllianceGoalCenter(m_centerIDs);
 }

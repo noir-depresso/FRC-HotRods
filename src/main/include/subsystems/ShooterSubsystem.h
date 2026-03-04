@@ -26,16 +26,15 @@ class ShooterSubsystem : public frc2::SubsystemBase {
   void SetHoodPercent(double percent);
   // Turret controls horizontal yaw (rotating plate under shooter + Limelight).
   void SetTurretPercent(double percent);
-    // Turret closed-loop helpers using integrated NEO relative encoder (motor rotations).
-  void SetTurretAngleMotorRot(double motorRot);
-  void NudgeTurretAngleMotorRot(double deltaMotorRot);
+  // Turret closed-loop helpers in turret output angle units.
+  void SetTurretAngle(units::radian_t angle);
+  void NudgeTurretAngle(units::radian_t deltaAngle);
   void ZeroTurretEncoder();
   void StopHoodMotor();
   void StopTurretMotor();
 
-  // Convenience APIs that map desired setpoints into open-loop duty estimates.
-  // Watch out: these are placeholders until real encoder feedback is integrated.
-   void SetFlywheelRPM(units::revolutions_per_minute_t rpm);
+  // Closed-loop shooter setpoint APIs.
+  void SetFlywheelRPM(units::revolutions_per_minute_t rpm);
   // Hood angle convention: 0 deg is vertical-up, positive tilts forward.
   void SetHoodAngle(units::radian_t angle);
   bool AtFlywheelSetpoint() const;
@@ -43,7 +42,7 @@ class ShooterSubsystem : public frc2::SubsystemBase {
   bool AtTurretSetpoint() const;
   bool IsReadyToShoot(bool hasValidTarget) const;
 
-   // One-press helper used by button 2 for parking/initial hood angle.
+  // One-press helper used by button 2 for parking/initial hood angle.
   void MoveHoodToInitialAngle();
 
  private:
@@ -76,5 +75,5 @@ class ShooterSubsystem : public frc2::SubsystemBase {
   bool m_hoodClosedLoopActive = false;
   bool m_turretClosedLoopActive = false;
   int m_flywheelAtSetpointCycles = 0;
-  double m_targetTurretMotorRot = 0.0;
+  units::radian_t m_targetTurretAngle{0.0};
 };

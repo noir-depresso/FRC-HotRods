@@ -77,7 +77,8 @@ RobotContainer::RobotContainer()
               // Auto-aim controls turret + hood only. Drivetrain rotation stays on driver input.
               m_autoAim.UpdateAim(m_shooter);
             } else {
-              m_shooter.StopTurretMotor();
+              // When pre-aim is off, hold turret aligned with robot forward heading.
+              m_shooter.SetTurretAngle(units::radian_t{0.0});
               m_shooter.StopHoodMotor();
             }
 
@@ -172,7 +173,8 @@ void RobotContainer::ConfigureButtonBindings() {
         }
         else {
             m_autoAim.End();
-            m_shooter.StopTurretMotor();
+            // Return turret to robot-forward alignment when pre-aim is disabled.
+            m_shooter.SetTurretAngle(units::radian_t{0.0});
             m_shooter.StopHoodMotor();
         }
     }));
