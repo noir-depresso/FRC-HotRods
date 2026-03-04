@@ -171,16 +171,16 @@ void ShootingAutoAim::UpdateAllianceTagIDs() {
   if (alliance && alliance.value() == frc::DriverStation::Alliance::kRed) {
     m_centerIDs = {8, 9, 10, 11, 2, 5};
     m_targetOffsetsByTag = {
-        {18, {.txDeg = 0.0, .tyDeg = -1.0}}, {19, {.txDeg = -0.8, .tyDeg = -0.7}},
-        {20, {.txDeg = 0.6, .tyDeg = -0.9}}, {21, {.txDeg = 0.0, .tyDeg = -0.6}},
-        {24, {.txDeg = -0.4, .tyDeg = -1.2}}, {27, {.txDeg = 0.7, .tyDeg = -1.0}}};
+        {8, {.txDeg = 0.0, .tyDeg = -1.0}}, {9, {.txDeg = -0.8, .tyDeg = -0.7}},
+        {10, {.txDeg = 0.6, .tyDeg = -0.9}}, {11, {.txDeg = 0.0, .tyDeg = -0.6}},
+        {2, {.txDeg = -0.4, .tyDeg = -1.2}}, {5, {.txDeg = 0.7, .tyDeg = -1.0}}};
   } else {
     // Default to blue set when alliance is unavailable.
     // Tune these values on-robot; they are initial aiming offsets only.
     m_centerIDs = {18, 19, 20, 21, 24, 27};
     m_targetOffsetsByTag = {
-        {8, {.txDeg = 0.0, .tyDeg = -1.0}}, {9, {.txDeg = 0.8, .tyDeg = -0.7}},
-        {10, {.txDeg = -0.6, .tyDeg = -0.9}}, {11, {.txDeg = 0.0, .tyDeg = -0.6}},
-        {2, {.txDeg = 0.4, .tyDeg = -1.2}}, {5, {.txDeg = -0.7, .tyDeg = -1.0}}};
+        {18, {.txDeg = 0.0, .tyDeg = -1.0}}, {19, {.txDeg = 0.8, .tyDeg = -0.7}},
+        {20, {.txDeg = -0.6, .tyDeg = -0.9}}, {21, {.txDeg = 0.0, .tyDeg = -0.6}},
+        {24, {.txDeg = 0.4, .tyDeg = -1.2}}, {27, {.txDeg = -0.7, .tyDeg = -1.0}}};
   }
 }
