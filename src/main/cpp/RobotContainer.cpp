@@ -6,6 +6,7 @@
 
 #include <frc/MathUtil.h>
 #include <frc2/command/RunCommand.h>
+#include <frc2/command/InstantCommand.h>
 #include <frc2/command/button/JoystickButton.h>
 #include <frc2/command/button/Trigger.h>
 #include <units/velocity.h>
@@ -193,7 +194,15 @@ void RobotContainer::ConfigureButtonBindings() {
             m_shooter.StopHoodMotor();
     }));
 
+  frc2::JoystickButton(&m_driverController, 5)
+    .OnTrue(frc2::InstantCommand([this] { m_pistonSubsystem.Toggle(); }, {&m_pistonSubsystem}).ToPtr());
 
+  // Use 'B' to extend and 'X' to retract
+  frc2::JoystickButton(&m_driverController, 7)
+    .OnTrue(frc2::InstantCommand([this] { m_pistonSubsystem.Extend(); }, {&m_pistonSubsystem}).ToPtr());
+    
+  frc2::JoystickButton(&m_driverController, 8)
+    .OnTrue(frc2::InstantCommand([this] { m_pistonSubsystem.Retract(); }, {&m_pistonSubsystem}).ToPtr());
 
   // frc2::Trigger([this] {
   //   return m_subsystem.ExampleCondition();

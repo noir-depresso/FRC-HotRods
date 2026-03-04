@@ -42,9 +42,8 @@ class AutoDriveForward
 
     m_startPose = m_drive->GetPose(); // remember starting position
 
-    m_timer.Reset();
-
-    m_timer.Start();
+  m_timer.Reset();   // 🔥 clears old time
+  m_timer.Start();   // 🔥 starts from 0
 
   }
 
@@ -80,7 +79,7 @@ class AutoDriveForward
 
   bool IsFinished() override {
 
-    return m_finished || m_timer.Get() > 5_s; // safety timeout
+    return m_finished || m_timer.Get() > 4_s; // safety timeout
 
   }
 
