@@ -43,7 +43,8 @@ void LogEvent(const std::string& msg) {
 }
 }  // namespace
 
-RobotContainer::RobotContainer() {
+RobotContainer::RobotContainer()
+    : m_autoAim("limelight", m_drive) {
   // Configure the button bindings
   ConfigureButtonBindings();
 
@@ -76,7 +77,8 @@ RobotContainer::RobotContainer() {
               // Auto-aim controls turret + hood only. Drivetrain rotation stays on driver input.
               m_autoAim.UpdateAim(m_shooter);
             } else {
-              m_shooter.StopTurretMotor();
+              // When pre-aim is off, hold turret aligned with robot forward heading.
+              m_shooter.SetTurretAngle(units::radian_t{0.0});
               m_shooter.StopHoodMotor();
             }
 
@@ -159,23 +161,26 @@ void RobotContainer::ConfigureButtonBindings() {
     LogEvent("Button 3 pressed: toggling auto-aim mode");
     m_autoAimEnabled = !m_autoAimEnabled;
 
-        if (m_autoAimEnabled)
+        if (m_autoAimEnabled) {
+            m_shooter.ZeroTurretEncoder();
             m_autoAim.Initialize();
+        }
         else {
             m_autoAim.End();
-            m_shooter.StopTurretMotor();
+            // Return turret to robot-forward alignment when pre-aim is disabled.
+            m_shooter.SetTurretAngle(units::radian_t{0.0});
             m_shooter.StopHoodMotor();
         }
     }).ToPtr());
 
-    frc2::JoystickButton(&m_driverController, 2).OnTrue(frc2::InstantCommand([this] {
-    m_shooterTurnRunning = !m_shooterTurnRunning;
-
-        if (m_shooterTurnRunning)
-            m_shooter.SetHoodPercent(+0.25);
-        else
-            m_shooter.StopHoodMotor();
-    }).ToPtr());
+    frc2::JoystickButton(&m_driverController, 2).OnTrue(new frc2::InstantCommand([this] {
+      LogEvent("Button 2 pressed: move hood to calculated initial angle");
+      if (const auto theta = m_autoAim.CalculateBallisticHoodAngle(); theta.has_value()) {
+        m_shooter.SetHoodAngle(theta.value());
+      } else {
+        m_shooter.MoveHoodToInitialAngle();
+      }
+    }));
 
   frc2::JoystickButton(&m_driverController, 5)
     .OnTrue(frc2::InstantCommand([this] { m_pistonSubsystem.Toggle(); }, {&m_pistonSubsystem}).ToPtr());

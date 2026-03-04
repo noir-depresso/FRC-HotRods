@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <utility>
+#include <cmath>
 
 using namespace units::literals;
 
@@ -13,6 +14,36 @@ constexpr auto Lerp(double t, double a, double b) {
 }
 
 }  // namespace
+
+std::optional<units::radian_t> ShotPlanner::SolveLaunchAngle(
+    units::meter_t x, units::meter_t y, units::meters_per_second_t v0,
+    bool preferHighArc, units::meters_per_second_squared_t accel) {
+  if (x <= 1e-6_m || v0 <= 1e-6_mps) {
+    return std::nullopt;
+  }
+
+  const auto v0Squared = v0 * v0;
+  const double A = (accel * x * x / (2.0 * v0Squared)).value();
+  const double B = x.value();
+  const double C = A - y.value();
+
+  const double discriminant = (B * B) - (4.0 * A * C);
+  if (discriminant < 0.0 || std::abs(A) < 1e-9) {
+    return std::nullopt;
+  }
+
+  const double sqrtDisc = std::sqrt(discriminant);
+  const double t1 = (-B + sqrtDisc) / (2.0 * A);
+  const double t2 = (-B - sqrtDisc) / (2.0 * A);
+
+  const units::radian_t a1{std::atan(t1)};
+  const units::radian_t a2{std::atan(t2)};
+
+  const units::radian_t high = (a1 >= a2) ? a1 : a2;
+  const units::radian_t low = (a1 >= a2) ? a2 : a1;
+  return preferHighArc ? high : low;
+}
+
 
 ShotPlanner::ShotPlanner() {
   // Starter map values are placeholders until on-robot characterization is done.

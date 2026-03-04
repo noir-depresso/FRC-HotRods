@@ -54,11 +54,11 @@ DriveSubsystem& GetDriveSubsystem() { return m_drive; }
 
   bool m_intakeRunning = false;
   bool m_shooterDriveRunning = false;
-  bool m_shooterTurnRunning = false;
+  // bool m_shooterTurnRunning = false;
   bool m_autoAimEnabled = false;
     bool m_aprilTagDirectionRunning = false;
 
-  ShootingAutoAim m_autoAim{"limelight"};
+  ShootingAutoAim m_autoAim;
 
   void ConfigureButtonBindings();
 
