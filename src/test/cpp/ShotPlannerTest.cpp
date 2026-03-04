@@ -9,6 +9,7 @@ namespace {
 using namespace units::literals;
 
 TEST(ShotPlannerTest, InterpolatesWithinRange) {
+  // Midpoint query should produce midpoint angle/RPM when map is linear.
   ShotPlanner planner;
   planner.SetMap({
       {2.0_m, units::degree_t{20.0}, 3000_rpm},
@@ -23,6 +24,7 @@ TEST(ShotPlannerTest, InterpolatesWithinRange) {
 }
 
 TEST(ShotPlannerTest, ClampsBelowMinimumRange) {
+  // Out-of-range low should clamp to first point and mark as clamped.
   ShotPlanner planner;
   planner.SetMap({
       {2.0_m, units::degree_t{20.0}, 3000_rpm},
@@ -37,6 +39,7 @@ TEST(ShotPlannerTest, ClampsBelowMinimumRange) {
 }
 
 TEST(ShotPlannerTest, SortsMapBeforeSolving) {
+  // SetMap() accepts unsorted inputs and normalizes ordering internally.
   ShotPlanner planner;
   planner.SetMap({
       {4.0_m, units::degree_t{40.0}, 5000_rpm},

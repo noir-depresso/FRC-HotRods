@@ -30,7 +30,7 @@ using namespace DriveConstants;
   using namespace pathplanner;
 
 
-// File-local state (avoid global symbol collisions across cpp files)
+// File-local logging/vision state (kept static to avoid class header noise).
 static std::string g_lastLLMessage{};
 static int g_printCounter = 0;
 static units::second_t g_lastVisionResetTime = 0_s;
@@ -56,14 +56,15 @@ DriveSubsystem::DriveSubsystem()
 
     frc::SmartDashboard::PutData("Field", &m_field);
 
-  // Start robot at origin (0,0,0)
+  // Default pose starts at origin until odometry/vision updates move it.
   m_pose = frc::Pose2d();
 
   auto inst = nt::NetworkTableInstance::GetDefault();
 
   m_pose3dPub = inst.GetStructTopic<frc::Pose3d>("RobotPose3d").Publish();
 
-  // pathplanner auto builder
+  // PathPlanner AutoBuilder stub is left commented while drive integration is
+  // under development. Keep all frame/unit assumptions aligned before enabling.
 // RobotConfig config;
 
 // try {
@@ -116,6 +117,7 @@ void DriveSubsystem::Drive(units::meters_per_second_t xSpeed,
                            units::meters_per_second_t ySpeed,
                            units::radians_per_second_t rot,
                            bool fieldRelative) {
+  // Clamp requested chassis speeds so downstream module states remain realistic.
   const units::meters_per_second_t xSpeedDelivered =
       std::clamp(xSpeed, -DriveConstants::kMaxSpeed, DriveConstants::kMaxSpeed);
   const units::meters_per_second_t ySpeedDelivered =
@@ -124,9 +126,11 @@ void DriveSubsystem::Drive(units::meters_per_second_t xSpeed,
       rot, -DriveConstants::kMaxAngularSpeed, DriveConstants::kMaxAngularSpeed);
 
   if (fieldRelative) {
+    // Already in field frame, safe to store directly for debug/sim integration.
     m_lastXSpeed  = xSpeedDelivered.value();
     m_lastYSpeed  = ySpeedDelivered.value();
   } else {
+    // Convert robot-relative commands to field frame for consistent telemetry.
     const frc::ChassisSpeeds fieldSpeeds = frc::ChassisSpeeds::FromRobotRelativeSpeeds(
         frc::ChassisSpeeds{xSpeedDelivered, ySpeedDelivered, rotDelivered},
         GetRotation2d());
@@ -154,6 +158,7 @@ void DriveSubsystem::Drive(units::meters_per_second_t xSpeed,
 }
 
 void DriveSubsystem::DriveRobotRelative(const frc::ChassisSpeeds& speeds) {
+  // Helper used by path following code paths that already operate in robot frame.
   auto states = kDriveKinematics.ToSwerveModuleStates(speeds);
   kDriveKinematics.DesaturateWheelSpeeds(&states, DriveConstants::kMaxSpeed);
 
@@ -170,6 +175,7 @@ void DriveSubsystem::DriveRobotRelative(const frc::ChassisSpeeds& speeds) {
 }
 
 void DriveSubsystem::SetX() {
+  // "X" wheel stance resists external pushes while stationary.
   m_frontLeft.SetDesiredState(
       frc::SwerveModuleState{0_mps, frc::Rotation2d{45_deg}});
   m_frontRight.SetDesiredState(
@@ -198,7 +204,7 @@ void DriveSubsystem::ResetEncoders() {
 }
 
 frc::ChassisSpeeds DriveSubsystem::GetRobotRelativeSpeeds() const {
-    // Compute robot-relative speeds from module states
+    // Reconstruct chassis motion from measured module states.
     return kDriveKinematics.ToChassisSpeeds(
         m_frontLeft.GetState(),
         m_frontRight.GetState(),
@@ -231,12 +237,12 @@ void DriveSubsystem::ResetOdometry(frc::Pose2d pose) {
 
 //Update() in Unity
 void DriveSubsystem::Periodic() {
-
-  // Correct gyro rotation??? (degrees -> Rotation2d)
+  // Gyro Z is treated as yaw in degrees, then converted to Rotation2d.
   frc::Rotation2d gyroRot{units::degree_t{
       m_gyro.GetAngle(frc::ADIS16470_IMU::IMUAxis::kZ)}};
 
-  // ORDER QUESTOINABLE: FL, FR, RL, RR
+  // Watch out: module order must exactly match kDriveKinematics constructor
+  // order (FL, FR, RL, RR), or pose estimates drift badly.
   m_odometry.Update(
       gyroRot,
       {m_frontLeft.GetPosition(),
@@ -264,6 +270,8 @@ void DriveSubsystem::Periodic() {
 
   if (frc::DriverStation::IsAutonomousEnabled() && ll.tagCount > 0) {
     const units::second_t now = frc::Timer::GetFPGATimestamp();
+    // Seed/reset odometry at auto start (and occasionally) from MegaTag2 to
+    // reduce initial pose bias before autonomous path execution.
     if (!g_autoVisionSeeded || (now - g_lastVisionResetTime) > 0.50_s) {
       ResetOdometry(ll.pose);
       g_lastVisionResetTime = now;
@@ -284,8 +292,7 @@ void DriveSubsystem::Periodic() {
     }
   }
 
-
-  // Simple turn hint from tx
+  // Simple operator-facing turn hint from horizontal target offset.
   constexpr double kDeadbandDeg = 1.5;
   const bool hasTarget = LimelightHelpers::getTV("limelight");
   const double tx = hasTarget ? LimelightHelpers::getTX("limelight") : 0.0;
@@ -310,7 +317,7 @@ void DriveSubsystem::Periodic() {
     g_lastLLMessage = msg;
   }
 
-     // Current pose from odometry
+  // Current pose from odometry
   // In sim, advance a lightweight kinematic pose integration for visualization.
   // On real robot, do NOT overwrite odometry here (that would undo encoder/vision updates).
 if (frc::RobotBase::IsSimulation()) {

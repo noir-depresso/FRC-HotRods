@@ -12,6 +12,8 @@
 #include "Constants.h"
 
 namespace {
+// These values are used only for open-loop approximation.
+// If they drift from real hardware behavior, aim consistency will suffer.
 constexpr auto kEstimatedMaxFlywheelRpm = 5600.0;
 constexpr auto kEstimatedMaxHoodAngle = units::degree_t{55.0};
 constexpr int kRequiredStableCycles = 10;
@@ -26,6 +28,8 @@ ShooterSubsystem::ShooterSubsystem()
                     rev::spark::SparkMax::MotorType::kBrushless),
       m_hoodMotor(DriveConstants::kShooterHood,
                   rev::spark::SparkMax::MotorType::kBrushless) {
+  // Shared conservative config for all shooter motors.
+  // Watch out: brake mode on hood/turret increases holding torque, but can raise current/heat.
   rev::spark::SparkMaxConfig neo20config;
 
   neo20config.SetIdleMode(rev::spark::SparkBaseConfig::IdleMode::kBrake);
@@ -46,6 +50,8 @@ ShooterSubsystem::ShooterSubsystem()
 }
 
 void ShooterSubsystem::Periodic() {
+  // "Stable" currently means all three axes are being commanded for long enough.
+  // This is a placeholder until encoder/absolute-angle based "at setpoint" checks exist.
   if (m_flywheelCommanded && m_hoodCommanded && m_turretCommanded) {
     ++m_stableCycles;
   } else {
@@ -54,6 +60,7 @@ void ShooterSubsystem::Periodic() {
 }
 
 void ShooterSubsystem::SetPercent(double percent) {
+  // Deadband removes joystick noise and prevents idle motor buzz.
   percent = frc::ApplyDeadband(percent, 0.02);
   percent = std::clamp(percent, -1.0, 1.0);
 
@@ -63,6 +70,7 @@ void ShooterSubsystem::SetPercent(double percent) {
 }
 
 void ShooterSubsystem::SetHoodPercent(double percent) {
+  // Hood changes shot trajectory arc (vertical aiming).
   percent = frc::ApplyDeadband(percent, 0.02);
   percent = std::clamp(percent, -1.0, 1.0);
 
@@ -71,6 +79,7 @@ void ShooterSubsystem::SetHoodPercent(double percent) {
 }
 
 void ShooterSubsystem::SetTurretPercent(double percent) {
+  // Turret rotates the whole shooter + camera assembly (horizontal aiming).
   percent = frc::ApplyDeadband(percent, 0.02);
   percent = std::clamp(percent, -1.0, 1.0);
 
@@ -104,12 +113,14 @@ void ShooterSubsystem::StopAll() {
 
 void ShooterSubsystem::SetFlywheelRPM(units::revolutions_per_minute_t rpm) {
   m_targetFlywheelRpm = rpm;
+  // Open-loop estimate only. Real closed-loop RPM control should use velocity feedback.
   const double duty = std::clamp(rpm.value() / kEstimatedMaxFlywheelRpm, -1.0, 1.0);
   SetPercent(duty);
 }
 
 void ShooterSubsystem::SetHoodAngle(units::radian_t angle) {
   m_targetHoodAngle = angle;
+  // Open-loop estimate only. Real hood angle control should use absolute angle feedback.
   const double duty =
       std::clamp((angle / kEstimatedMaxHoodAngle).value(), -1.0, 1.0);
   SetHoodPercent(duty);

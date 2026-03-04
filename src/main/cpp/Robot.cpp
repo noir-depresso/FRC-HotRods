@@ -40,9 +40,12 @@ void Robot::DisabledPeriodic() {}
  * RobotContainer} class.
  */
 void Robot::AutonomousInit() {
+  // Pull the selected auto once at mode start. The command may be empty
+  // if chooser setup failed or no auto was selected.
   m_autonomousCommand = m_container.GetAutonomousCommand();
 
   if (m_autonomousCommand) {
+    // Schedule exactly once. The scheduler runs in RobotPeriodic.
     m_autonomousCommand->Schedule();
   }
 }
@@ -51,10 +54,14 @@ void Robot::AutonomousPeriodic() {}
 
 void Robot::TeleopInit() {
   if (m_autonomousCommand) {
+    // Watch out: if auto is still running when teleop starts, it can keep
+    // owning subsystems and block driver commands unless we cancel here.
     m_autonomousCommand->Cancel();
     m_autonomousCommand.reset();   // clears the optional
   }
 
+  // This project intentionally re-zeros odometry for teleop at field origin.
+  // If you need pose continuity between auto and teleop, remove this reset.
   m_container.GetDriveSubsystem().ResetOdometry(
       frc::Pose2d{0_m, 0_m, 0_deg});
 }

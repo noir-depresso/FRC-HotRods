@@ -24,6 +24,7 @@ MAXSwerveModule::MAXSwerveModule(const int drivingCANId, const int turningCANId,
                            rev::ResetMode::kResetSafeParameters,
                            rev::PersistMode::kPersistParameters);
 
+  // Module mounting offset maps absolute encoder zero into robot chassis frame.
   m_chassisAngularOffset = chassisAngularOffset;
   m_desiredState.angle =
       frc::Rotation2d(units::radian_t{m_turningAbsoluteEncoder.GetPosition()});
@@ -31,6 +32,7 @@ MAXSwerveModule::MAXSwerveModule(const int drivingCANId, const int turningCANId,
 }
 
 frc::SwerveModuleState MAXSwerveModule::GetState() const {
+  // Return angle relative to chassis, not raw encoder angle.
   return {units::meters_per_second_t{m_drivingEncoder.GetVelocity()},
           units::radian_t{m_turningAbsoluteEncoder.GetPosition() -
                           m_chassisAngularOffset}};
@@ -52,6 +54,7 @@ void MAXSwerveModule::SetDesiredState(
       frc::Rotation2d(units::radian_t{m_chassisAngularOffset});
 
   // Optimize the reference state to avoid spinning further than 90 degrees.
+  // Watch out: Optimize may reverse wheel speed sign to shorten turn path.
   correctedDesiredState.Optimize(
       frc::Rotation2d(units::radian_t{m_turningAbsoluteEncoder.GetPosition()}));
 

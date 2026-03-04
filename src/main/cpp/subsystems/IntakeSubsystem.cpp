@@ -20,6 +20,7 @@ IntakeSubsystem::IntakeSubsystem()
 
   rev::spark::SparkMaxConfig neo20config;
 
+  // Conservative defaults to protect motor and avoid brownout spikes.
   neo20config.SetIdleMode(rev::spark::SparkBaseConfig::IdleMode::kBrake);
   neo20config.SmartCurrentLimit(40);
   neo20config.OpenLoopRampRate(0.10);
@@ -34,6 +35,7 @@ IntakeSubsystem::IntakeSubsystem()
 
 
 void IntakeSubsystem::SetPercent(double percent) {
+  // Deadband removes joystick noise that can make rollers "creep" at idle.
   percent = frc::ApplyDeadband(percent, 0.02);
   percent = std::clamp(percent, -1.0, 1.0);
   m_motor.Set(percent);
@@ -45,6 +47,7 @@ void IntakeSubsystem::Stop(){ m_motor.StopMotor(); }
 
 void IntakeSubsystem::EnableAprilTagDirectionControl(bool enable) {
   m_aprilTagDirectionControlEnabled = enable;
+  // Reset previous sample so first cycle after enable does not use stale delta.
   m_lastTagDistanceMeters.reset();
 
   if (!enable) {
@@ -57,6 +60,7 @@ bool IntakeSubsystem::IsAprilTagDirectionControlEnabled() const {
 }
 
 double IntakeSubsystem::GetClosestAprilTagDistanceMeters() const {
+  // Raw fiducials gives per-tag camera distance; we use nearest as control signal.
   const auto fiducials = LimelightHelpers::getRawFiducials("limelight");
   if (fiducials.empty()) {
     return -1.0;
@@ -80,6 +84,7 @@ void IntakeSubsystem::Periodic() {
   }
 
   if (!LimelightHelpers::getTV("limelight")) {
+    // No valid vision target means no direction cue, so fail safe to stopped.
     m_lastTagDistanceMeters.reset();
     Stop();
     return;
@@ -96,6 +101,7 @@ void IntakeSubsystem::Periodic() {
                                  currentDistanceMeters);
 
   if (!m_lastTagDistanceMeters.has_value()) {
+    // Prime filter with first measurement; no direction decision yet.
     m_lastTagDistanceMeters = currentDistanceMeters;
     Stop();
     return;
@@ -109,10 +115,13 @@ void IntakeSubsystem::Periodic() {
                                  distanceDeltaMeters);
 
   if (std::fabs(distanceDeltaMeters) <= kDistanceDeadbandMeters) {
+    // Ignore minor frame-to-frame jitter from vision noise.
     Stop();
   } else if (distanceDeltaMeters < 0.0) {
+    // Tag is getting closer: run intake in.
     SetPercent(0.5);
   } else {
+    // Tag is moving farther away: reverse intake.
     SetPercent(-0.5);
   }
 
