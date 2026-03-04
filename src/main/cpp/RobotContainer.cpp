@@ -173,18 +173,6 @@ void RobotContainer::ConfigureButtonBindings() {
         }
     }));
 
-     frc2::JoystickButton(&m_driverController, 3).OnTrue(new frc2::InstantCommand([this] {
-    LogEvent("Button 3 pressed: toggling auto-aim mode");
-    m_autoAimEnabled = !m_autoAimEnabled;
-
-        if (m_autoAimEnabled)
-            m_autoAim.Initialize();
-        else {
-            m_autoAim.End();
-            m_shooter.StopTurningMotor();
-        }
-    }));
-
     frc2::JoystickButton(&m_driverController, 2).OnTrue(new frc2::InstantCommand([this] {
     m_shooterTurnRunning = !m_shooterTurnRunning;
 
@@ -203,6 +191,20 @@ void RobotContainer::ConfigureButtonBindings() {
     
   frc2::JoystickButton(&m_driverController, 8)
     .OnTrue(frc2::InstantCommand([this] { m_pistonSubsystem.Retract(); }, {&m_pistonSubsystem}).ToPtr());
+
+    frc2::JoystickButton(&m_driverController, 3).OnTrue(new frc2::InstantCommand([this] {
+    m_aprilTagDirectionRunning = !m_aprilTagDirectionRunning;
+    m_intake.EnableAprilTagDirectionControl(m_aprilTagDirectionRunning);
+
+        if (m_aprilTagDirectionRunning) {
+            m_intakeRunning = true;
+        } else {
+            m_intakeRunning = false;
+            m_intake.Stop();
+        }
+    }));
+
+
 
   // frc2::Trigger([this] {
   //   return m_subsystem.ExampleCondition();
