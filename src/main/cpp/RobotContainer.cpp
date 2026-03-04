@@ -166,8 +166,10 @@ void RobotContainer::ConfigureButtonBindings() {
     LogEvent("Button 3 pressed: toggling auto-aim mode");
     m_autoAimEnabled = !m_autoAimEnabled;
 
-        if (m_autoAimEnabled)
+        if (m_autoAimEnabled) {
+            m_shooter.ZeroTurretEncoder();
             m_autoAim.Initialize();
+        }
         else {
             m_autoAim.End();
             m_shooter.StopTurretMotor();
@@ -176,12 +178,12 @@ void RobotContainer::ConfigureButtonBindings() {
     }));
 
     frc2::JoystickButton(&m_driverController, 2).OnTrue(new frc2::InstantCommand([this] {
-    m_shooterTurnRunning = !m_shooterTurnRunning;
-
-        if (m_shooterTurnRunning)
-            m_shooter.SetHoodPercent(+0.25);
-        else
-            m_shooter.StopHoodMotor();
+      LogEvent("Button 2 pressed: move hood to calculated initial angle");
+      if (const auto theta = m_autoAim.CalculateBallisticHoodAngle(); theta.has_value()) {
+        m_shooter.SetHoodAngle(theta.value());
+      } else {
+        m_shooter.MoveHoodToInitialAngle();
+      }
     }));
 
   frc2::JoystickButton(&m_driverController, 5)

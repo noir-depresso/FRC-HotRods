@@ -24,6 +24,9 @@ constexpr units::meter_t kGoalCenterOffsetX = 0.595_m;
 constexpr units::meter_t kGoalRelativeHeight = 1.83_m;
 constexpr units::meters_per_second_t kNominalLaunchSpeed = 12.0_mps;
 constexpr bool kPreferHighArc = false;
+constexpr auto kHoodVerticalReference = units::degree_t{90.0};
+constexpr auto kHoodForwardLimit = units::degree_t{32.0};
+constexpr double kTurretStepMotorRotPerLoop = 0.18;
 
 std::optional<frc::Translation2d> ComputeAllianceGoalCenter(
     const std::vector<int>& targetTags) {
@@ -135,37 +138,50 @@ void ShootingAutoAim::UpdateAim(ShooterSubsystem& shooter) {
   // Clamp protects mechanism and prevents aggressive oscillation.
   turretCmd = std::clamp(turretCmd, -0.6, 0.6);
 
-  // double hoodCmd = m_hoodPID.Calculate(ty, aimOffsets->tyDeg);
-  // // Hood is intentionally clamped tighter than turret to reduce over-correction.
-  // hoodCmd = std::clamp(hoodCmd, -0.45, 0.45);
+  shooter.NudgeTurretAngleMotorRot(turretCmd * kTurretStepMotorRotPerLoop);
 
-  shooter.SetTurretPercent(turretCmd);
-  // shooter.SetHoodPercent(hoodCmd);
+  const auto solvedTheta = CalculateBallisticHoodAngle();
+  if (solvedTheta.has_value()) {
+    shooter.SetHoodAngle(solvedTheta.value());
+  } else {
+    // Fallback to ty PID if ballistic solve is unavailable/unreachable.
+    double hoodCmd = m_hoodPID.Calculate(ty, aimOffsets->tyDeg);
+    hoodCmd = std::clamp(hoodCmd, -0.45, 0.45);
+    shooter.SetHoodPercent(hoodCmd);
+  }
+}
 
-    // Use ballistic trajectory solve for hood elevation when distance data is available.
-  bool solvedBallistics = false;
+
+std::optional<units::radian_t> ShootingAutoAim::CalculateBallisticHoodAngle() const {
+  const auto bestTag = SelectBestTag();
+  if (!bestTag.has_value()) {
+    return std::nullopt;
+  }
+
   for (const auto& f : LimelightHelpers::getRawFiducials(m_ll)) {
     if (f.id != bestTag.value()) {
       continue;
     }
 
     const units::meter_t x = units::meter_t{f.distToRobot} + kGoalCenterOffsetX;
-    const auto solvedTheta =
+    const auto launchTheta =
         ShotPlanner::SolveLaunchAngle(x, kGoalRelativeHeight, kNominalLaunchSpeed,
                                       kPreferHighArc);
-    if (solvedTheta.has_value()) {
-      shooter.SetHoodAngle(solvedTheta.value());
-      solvedBallistics = true;
+    if (!launchTheta.has_value()) {
+      return std::nullopt;
     }
-    break;
+
+    // Ballistics solves theta from horizontal; hood is defined from vertical-up.
+    const units::radian_t hoodFromVertical =
+        units::radian_t{kHoodVerticalReference} - launchTheta.value();
+    if (hoodFromVertical < 0_deg || hoodFromVertical > kHoodForwardLimit) {
+      return std::nullopt;
+    }
+
+    return hoodFromVertical;
   }
 
-  if (!solvedBallistics) {
-    // Fallback to ty PID if ballistic solve is unavailable/unreachable.
-    double hoodCmd = m_hoodPID.Calculate(ty, aimOffsets->tyDeg);
-    hoodCmd = std::clamp(hoodCmd, -0.45, 0.45);
-    shooter.SetHoodPercent(hoodCmd);
-  }
+  return std::nullopt;
 }
 
 std::optional<double> ShootingAutoAim::ComputePosePreAimTurretCommand() {

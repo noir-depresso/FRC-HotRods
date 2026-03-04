@@ -2,6 +2,7 @@
 
 #include <frc/controller/PIDController.h>
 #include <frc/geometry/Translation2d.h>
+#include <units/angle.h>
 
 #include <unordered_map>
 #include <optional>
@@ -23,6 +24,7 @@ class ShootingAutoAim {
   // This aims to a tag-relative offset, not the tag center itself.
   void UpdateAim(ShooterSubsystem& shooter);
   bool HasValidTarget() const;
+    std::optional<units::radian_t> CalculateBallisticHoodAngle() const;
 
  private:
   struct AimOffsets {
