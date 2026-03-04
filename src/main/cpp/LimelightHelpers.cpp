@@ -1,3 +1,6 @@
+// Legacy Limelight helper implementation kept as a reference.
+// Watch out: this file is intentionally commented out; active helper behavior
+// comes from the header/library currently used by the project.
 // // namespace LimelightHelpers
 // #include "LimelightHelpers.h"
 // #include <array>

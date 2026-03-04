@@ -60,6 +60,7 @@ RobotContainer::RobotContainer() {
   m_drive.SetDefaultCommand(
       frc2::RunCommand(
           [this] {
+            // Raw axes are from GenericHID; adjust mapping if controller layout changes.
             const double xInput = frc::ApplyDeadband(m_driverController.GetRawAxis(1),
                                                      OIConstants::kDriveDeadband);
             const double yInput = frc::ApplyDeadband(m_driverController.GetRawAxis(0),
@@ -72,16 +73,11 @@ RobotContainer::RobotContainer() {
             auto rot = -rotInput * DriveConstants::kMaxAngularSpeed;
 
             if (m_autoAimEnabled) {
-              const auto aimTurn = m_autoAim.GetTurnCommand();
-              if (aimTurn.has_value()) {
-                rot = units::radians_per_second_t{
-                    aimTurn.value() * DriveConstants::kMaxAngularSpeed.value()};
-                m_shooter.SetTurnPercent(aimTurn.value());
-              } else {
-                m_shooter.StopTurningMotor();
-              }
+              // Auto-aim controls turret + hood only. Drivetrain rotation stays on driver input.
+              m_autoAim.UpdateAim(m_shooter);
             } else {
-              m_shooter.StopTurningMotor();
+              m_shooter.StopTurretMotor();
+              m_shooter.StopHoodMotor();
             }
 
             // Last argument: fieldRelative
@@ -92,6 +88,7 @@ RobotContainer::RobotContainer() {
 pathplanner::RobotConfig config;
 
 try {
+    // Pull robot geometry from PathPlanner GUI settings.
     config = pathplanner::RobotConfig::fromGUISettings();
     fmt::print("Loaded PathPlanner RobotConfig successfully!\n");
 } catch (const std::exception& e) {
@@ -104,6 +101,9 @@ try {
         [this](const frc::Pose2d& pose) { m_drive.ResetOdometry(pose); },
         [this]() { return m_drive.GetRobotRelativeSpeeds(); },
         [this](const frc::ChassisSpeeds& speeds) {
+            // WATCH OUT: this currently calls both Drive(...) and DriveRobotRelative(...)
+            // with the same speeds. Validate this on-robot; many drivetrains should use
+            // only one path to avoid double-applying commands.
             m_drive.Drive(speeds.vx, speeds.vy, speeds.omega, false);
             // AutoBuilder gives real robot-relative velocities. Send those
             // directly to the drivetrain without joystick normalization.
@@ -169,7 +169,8 @@ void RobotContainer::ConfigureButtonBindings() {
             m_autoAim.Initialize();
         else {
             m_autoAim.End();
-            m_shooter.StopTurningMotor();
+            m_shooter.StopTurretMotor();
+            m_shooter.StopHoodMotor();
         }
     }));
 
@@ -193,6 +194,8 @@ void RobotContainer::ConfigureButtonBindings() {
     .OnTrue(frc2::InstantCommand([this] { m_pistonSubsystem.Retract(); }, {&m_pistonSubsystem}).ToPtr());
 
     frc2::JoystickButton(&m_driverController, 10).OnTrue(new frc2::InstantCommand([this] {
+    // WATCH OUT: this shares button 3 with auto-aim toggle above.
+    // Both actions fire on the same press unless remapped.
     m_aprilTagDirectionRunning = !m_aprilTagDirectionRunning;
     m_intake.EnableAprilTagDirectionControl(m_aprilTagDirectionRunning);
 

@@ -6,6 +6,9 @@
 
 namespace AutoConstants {
 
+// Motion profile limits for heading control in autonomous.
+// Watch out: these values must stay consistent with drivetrain capability,
+// or the theta controller can command turns the modules cannot physically track.
 const frc::TrapezoidProfile<units::radians>::Constraints
     kThetaControllerConstraints{kMaxAngularSpeed, kMaxAngularAcceleration};
 

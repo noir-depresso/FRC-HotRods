@@ -6,16 +6,24 @@
 #include <frc/DriverStation.h>
 
 #include "LimelightHelpers.h"
+#include "subsystems/ShooterSubsystem.h"
 
 ShootingAutoAim::ShootingAutoAim(std::string limelightName)
-    : m_ll(std::move(limelightName)), m_turnPID(0.03, 0.0, 0.002) {
-  m_turnPID.SetTolerance(1.0);
+    : m_ll(std::move(limelightName)),
+      // Separate loops: turret (yaw) and hood (pitch/trajectory).
+      m_turretPID(0.03, 0.0, 0.002),
+      m_hoodPID(0.025, 0.0, 0.0015) {
+  m_turretPID.SetTolerance(1.0);
+  m_hoodPID.SetTolerance(1.0);
   UpdateAllianceTagIDs();
 }
 
 void ShootingAutoAim::Initialize() {
+  // Rebuild alliance-dependent IDs/offsets every enable.
+  // Watch out: if alliance is unknown at init, blue defaults are used below.
   UpdateAllianceTagIDs();
-  m_turnPID.Reset();
+  m_turretPID.Reset();
+  m_hoodPID.Reset();
   m_lastBestId = -1;
   m_loggedNoTarget = false;
   LimelightHelpers::SetFiducialIDFiltersOverride(m_ll, m_centerIDs);
@@ -23,19 +31,59 @@ void ShootingAutoAim::Initialize() {
 
 void ShootingAutoAim::End() {
   m_lastBestId = -1;
-  m_turnPID.Reset();
+  m_turretPID.Reset();
+  m_hoodPID.Reset();
 }
 
-std::optional<double> ShootingAutoAim::GetTurnCommand() {
+bool ShootingAutoAim::HasValidTarget() const {
+  return LimelightHelpers::getTV(m_ll);
+}
+
+void ShootingAutoAim::UpdateAim(ShooterSubsystem& shooter) {
+  // Hard fail-safe: no target means both aim axes are stopped.
   if (!LimelightHelpers::getTV(m_ll)) {
-    if (!m_loggedNoTarget) {
-      m_loggedNoTarget = true;
-    }
-    return std::nullopt;
+    shooter.StopTurretMotor();
+    shooter.StopHoodMotor();
+    m_loggedNoTarget = true;
+    return;
   }
 
   m_loggedNoTarget = false;
 
+  const auto bestTag = SelectBestTag();
+  if (!bestTag.has_value()) {
+    shooter.StopTurretMotor();
+    shooter.StopHoodMotor();
+    return;
+  }
+
+  const auto aimOffsets = GetAimOffsets(bestTag.value());
+  if (!aimOffsets.has_value()) {
+    shooter.StopTurretMotor();
+    shooter.StopHoodMotor();
+    return;
+  }
+
+  m_lastBestId = bestTag.value();
+  // Force Limelight to prioritize the selected tag for tx/ty stability.
+  LimelightHelpers::setPriorityTagID(m_ll, bestTag.value());
+
+  const double tx = LimelightHelpers::getTX(m_ll);
+  const double ty = LimelightHelpers::getTY(m_ll);
+
+  double turretCmd = m_turretPID.Calculate(tx, aimOffsets->txDeg);
+  // Clamp protects mechanism and prevents aggressive oscillation.
+  turretCmd = std::clamp(turretCmd, -0.6, 0.6);
+
+  double hoodCmd = m_hoodPID.Calculate(ty, aimOffsets->tyDeg);
+  // Hood is intentionally clamped tighter than turret to reduce over-correction.
+  hoodCmd = std::clamp(hoodCmd, -0.45, 0.45);
+
+  shooter.SetTurretPercent(turretCmd);
+  shooter.SetHoodPercent(hoodCmd);
+}
+
+std::optional<int> ShootingAutoAim::SelectBestTag() const {
   auto fiducials = LimelightHelpers::getRawFiducials(m_ll);
   if (fiducials.empty()) {
     return std::nullopt;
@@ -49,6 +97,7 @@ std::optional<double> ShootingAutoAim::GetTurnCommand() {
       continue;
     }
 
+    // Lower score is better: low ambiguity and closer targets are preferred.
     const double score = f.ambiguity + 0.05 * f.distToRobot;
     if (score < bestScore) {
       bestScore = score;
@@ -60,20 +109,33 @@ std::optional<double> ShootingAutoAim::GetTurnCommand() {
     return std::nullopt;
   }
 
-  m_lastBestId = bestId;
-  LimelightHelpers::setPriorityTagID(m_ll, bestId);
+  return bestId;
+}
 
-  const double tx = LimelightHelpers::getTX(m_ll);
-  double turnCmd = m_turnPID.Calculate(tx, 0.0);
-  turnCmd = std::clamp(turnCmd, -0.6, 0.6);
-  return turnCmd;
+std::optional<ShootingAutoAim::AimOffsets> ShootingAutoAim::GetAimOffsets(
+    int tagId) const {
+  const auto it = m_targetOffsetsByTag.find(tagId);
+  if (it == m_targetOffsetsByTag.end()) {
+    return std::nullopt;
+  }
+  return it->second;
 }
 
 void ShootingAutoAim::UpdateAllianceTagIDs() {
   const auto alliance = frc::DriverStation::GetAlliance();
-  if (alliance && alliance.value() == frc::DriverStation::Alliance::kBlue) {
-    m_centerIDs = {18, 19, 20, 21, 24, 27};
-  } else {
+  if (alliance && alliance.value() == frc::DriverStation::Alliance::kRed) {
     m_centerIDs = {8, 9, 10, 11, 2, 5};
+    m_targetOffsetsByTag = {
+        {18, {.txDeg = 0.0, .tyDeg = -1.0}}, {19, {.txDeg = -0.8, .tyDeg = -0.7}},
+        {20, {.txDeg = 0.6, .tyDeg = -0.9}}, {21, {.txDeg = 0.0, .tyDeg = -0.6}},
+        {24, {.txDeg = -0.4, .tyDeg = -1.2}}, {27, {.txDeg = 0.7, .tyDeg = -1.0}}};
+  } else {
+    // Default to blue set when alliance is unavailable.
+    // Tune these values on-robot; they are initial aiming offsets only.
+    m_centerIDs = {18, 19, 20, 21, 24, 27};
+    m_targetOffsetsByTag = {
+        {8, {.txDeg = 0.0, .tyDeg = -1.0}}, {9, {.txDeg = 0.8, .tyDeg = -0.7}},
+        {10, {.txDeg = -0.6, .tyDeg = -0.9}}, {11, {.txDeg = 0.0, .tyDeg = -0.6}},
+        {2, {.txDeg = 0.4, .tyDeg = -1.2}}, {5, {.txDeg = -0.7, .tyDeg = -1.0}}};
   }
 }

@@ -61,7 +61,8 @@ constexpr int kIntakeCanID = 21; //23
 
 constexpr int kShooterDriving1 = 20; //21
 constexpr int kShooterDriving2 = 22;
-constexpr int kShooterTurning = 24;
+constexpr int kShooterTurret = 23;
+constexpr int kShooterHood = 24;
 }  // namespace DriveConstants
 
 namespace ModuleConstants {

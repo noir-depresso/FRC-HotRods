@@ -8,6 +8,7 @@ using namespace units::literals;
 namespace {
 
 constexpr auto Lerp(double t, double a, double b) {
+  // Linear interpolation helper used for both angle and flywheel RPM.
   return a + (t * (b - a));
 }
 
@@ -25,6 +26,7 @@ ShotPlanner::ShotPlanner() {
 }
 
 void ShotPlanner::SetMap(std::vector<ShotPlanPoint> points) {
+  // Ensure ascending range order so Solve() can walk neighbors safely.
   std::sort(points.begin(), points.end(),
             [](const ShotPlanPoint& a, const ShotPlanPoint& b) {
               return a.range < b.range;
@@ -34,6 +36,7 @@ void ShotPlanner::SetMap(std::vector<ShotPlanPoint> points) {
 
 std::optional<ShotPlanSolution> ShotPlanner::Solve(units::meter_t range) const {
   if (m_points.empty()) {
+    // No calibration map loaded: caller must handle missing solution.
     return std::nullopt;
   }
 
@@ -43,11 +46,13 @@ std::optional<ShotPlanSolution> ShotPlanner::Solve(units::meter_t range) const {
   }
 
   if (range <= m_points.front().range) {
+    // Clamp low instead of extrapolating to keep commands in known-safe region.
     return ShotPlanSolution{range, m_points.front().hoodAngle,
                             m_points.front().flywheelRpm, true};
   }
 
   if (range >= m_points.back().range) {
+    // Clamp high for the same reason: no uncharacterized extrapolation.
     return ShotPlanSolution{range, m_points.back().hoodAngle,
                             m_points.back().flywheelRpm, true};
   }
@@ -57,6 +62,7 @@ std::optional<ShotPlanSolution> ShotPlanner::Solve(units::meter_t range) const {
     const auto& upper = m_points[i + 1];
 
     if (range >= lower.range && range <= upper.range) {
+      // Interpolate between two characterized points.
       const double span = (upper.range - lower.range).value();
       const double t = span > 0.0 ? ((range - lower.range).value() / span) : 0.0;
 
