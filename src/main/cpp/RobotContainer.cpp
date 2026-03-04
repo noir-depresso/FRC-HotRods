@@ -192,7 +192,7 @@ void RobotContainer::ConfigureButtonBindings() {
   frc2::JoystickButton(&m_driverController, 8)
     .OnTrue(frc2::InstantCommand([this] { m_pistonSubsystem.Retract(); }, {&m_pistonSubsystem}).ToPtr());
 
-    frc2::JoystickButton(&m_driverController, 3).OnTrue(new frc2::InstantCommand([this] {
+    frc2::JoystickButton(&m_driverController, 10).OnTrue(new frc2::InstantCommand([this] {
     m_aprilTagDirectionRunning = !m_aprilTagDirectionRunning;
     m_intake.EnableAprilTagDirectionControl(m_aprilTagDirectionRunning);
 
