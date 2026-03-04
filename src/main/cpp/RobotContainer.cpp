@@ -72,16 +72,10 @@ RobotContainer::RobotContainer() {
             auto rot = -rotInput * DriveConstants::kMaxAngularSpeed;
 
             if (m_autoAimEnabled) {
-              const auto aimTurn = m_autoAim.GetTurnCommand();
-              if (aimTurn.has_value()) {
-                rot = units::radians_per_second_t{
-                    aimTurn.value() * DriveConstants::kMaxAngularSpeed.value()};
-                m_shooter.SetTurnPercent(aimTurn.value());
-              } else {
-                m_shooter.StopTurningMotor();
-              }
+              m_autoAim.UpdateAim(m_shooter);
             } else {
-              m_shooter.StopTurningMotor();
+              m_shooter.StopTurretMotor();
+              m_shooter.StopHoodMotor();
             }
 
             // Last argument: fieldRelative
@@ -169,7 +163,8 @@ void RobotContainer::ConfigureButtonBindings() {
             m_autoAim.Initialize();
         else {
             m_autoAim.End();
-            m_shooter.StopTurningMotor();
+            m_shooter.StopTurretMotor();
+            m_shooter.StopHoodMotor();
         }
     }));
 
@@ -181,7 +176,8 @@ void RobotContainer::ConfigureButtonBindings() {
             m_autoAim.Initialize();
         else {
             m_autoAim.End();
-            m_shooter.StopTurningMotor();
+            m_shooter.StopTurretMotor();
+            m_shooter.StopHoodMotor();
         }
     }));
 

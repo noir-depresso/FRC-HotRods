@@ -22,8 +22,10 @@ ShooterSubsystem::ShooterSubsystem()
                       rev::spark::SparkMax::MotorType::kBrushless),
       m_drivingMotor2(DriveConstants::kShooterDriving2,
                       rev::spark::SparkMax::MotorType::kBrushless),
-      m_turningMotor(DriveConstants::kShooterTurning,
-                     rev::spark::SparkMax::MotorType::kBrushless) {
+      m_turretMotor(DriveConstants::kShooterTurret,
+                    rev::spark::SparkMax::MotorType::kBrushless),
+      m_hoodMotor(DriveConstants::kShooterHood,
+                  rev::spark::SparkMax::MotorType::kBrushless) {
   rev::spark::SparkMaxConfig neo20config;
 
   neo20config.SetIdleMode(rev::spark::SparkBaseConfig::IdleMode::kBrake);
@@ -37,12 +39,14 @@ ShooterSubsystem::ShooterSubsystem()
   m_drivingMotor2.Configure(neo20config, rev::ResetMode::kResetSafeParameters,
                             rev::PersistMode::kPersistParameters);
 
-  m_turningMotor.Configure(neo20config, rev::ResetMode::kResetSafeParameters,
-                           rev::PersistMode::kPersistParameters);
+  m_turretMotor.Configure(neo20config, rev::ResetMode::kResetSafeParameters,
+                          rev::PersistMode::kPersistParameters);
+  m_hoodMotor.Configure(neo20config, rev::ResetMode::kResetSafeParameters,
+                        rev::PersistMode::kPersistParameters);
 }
 
 void ShooterSubsystem::Periodic() {
-  if (m_flywheelCommanded && m_hoodCommanded) {
+  if (m_flywheelCommanded && m_hoodCommanded && m_turretCommanded) {
     ++m_stableCycles;
   } else {
     m_stableCycles = 0;
@@ -62,11 +66,17 @@ void ShooterSubsystem::SetHoodPercent(double percent) {
   percent = frc::ApplyDeadband(percent, 0.02);
   percent = std::clamp(percent, -1.0, 1.0);
 
-  m_turningMotor.Set(percent);
+  m_hoodMotor.Set(percent);
   m_hoodCommanded = (std::abs(percent) > 1e-6);
 }
 
-void ShooterSubsystem::SetTurnPercent(double percent) { SetHoodPercent(percent); }
+void ShooterSubsystem::SetTurretPercent(double percent) {
+  percent = frc::ApplyDeadband(percent, 0.02);
+  percent = std::clamp(percent, -1.0, 1.0);
+
+  m_turretMotor.Set(percent);
+  m_turretCommanded = (std::abs(percent) > 1e-6);
+}
 
 void ShooterSubsystem::SpinDrivingMotors() { SetPercent(+0.75); }
 
@@ -77,15 +87,19 @@ void ShooterSubsystem::StopDrivingMotors() {
 }
 
 void ShooterSubsystem::StopHoodMotor() {
-  m_turningMotor.StopMotor();
+  m_hoodMotor.StopMotor();
   m_hoodCommanded = false;
 }
 
-void ShooterSubsystem::StopTurningMotor() { StopHoodMotor(); }
+void ShooterSubsystem::StopTurretMotor() {
+  m_turretMotor.StopMotor();
+  m_turretCommanded = false;
+}
 
 void ShooterSubsystem::StopAll() {
   StopDrivingMotors();
   StopHoodMotor();
+  StopTurretMotor();
 }
 
 void ShooterSubsystem::SetFlywheelRPM(units::revolutions_per_minute_t rpm) {
@@ -111,7 +125,13 @@ bool ShooterSubsystem::AtHoodSetpoint() const {
   return m_hoodCommanded;
 }
 
+bool ShooterSubsystem::AtTurretSetpoint() const {
+  // Placeholder readiness behavior until turret angle feedback is wired.
+  return m_turretCommanded;
+}
+
 bool ShooterSubsystem::IsReadyToShoot(bool hasValidTarget) const {
   return hasValidTarget && AtFlywheelSetpoint() && AtHoodSetpoint() &&
+         AtTurretSetpoint() &&
          (m_stableCycles >= kRequiredStableCycles);
 }
