@@ -1,20 +1,37 @@
 #include "subsystems/ShootingAutoAim.h"
 
 #include <algorithm>
+#include <cmath>
 #include <utility>
 
 #include <frc/DriverStation.h>
+#include <frc/MathUtil.h>
+#include <frc/geometry/Translation2d.h>
+#include <units/length.h>
 
 #include "LimelightHelpers.h"
+#include "subsystems/DriveSubsystem.h"
 #include "subsystems/ShooterSubsystem.h"
 
-ShootingAutoAim::ShootingAutoAim(std::string limelightName)
+using namespace units::literals;
+
+namespace {
+// 2022 field center hub approximation in WPILib field coordinates.
+constexpr frc::Translation2d kGoalHubCenter{8.27_m, 4.11_m};
+}
+
+ShootingAutoAim::ShootingAutoAim(std::string limelightName,
+                                 DriveSubsystem& drive)
     : m_ll(std::move(limelightName)),
+      m_drive(drive),
       // Separate loops: turret (yaw) and hood (pitch/trajectory).
       m_turretPID(0.03, 0.0, 0.002),
-      m_hoodPID(0.025, 0.0, 0.0015) {
+       m_hoodPID(0.025, 0.0, 0.0015),
+      // Pre-aim from odometry is intentionally gentle; vision does final lock.
+      m_poseTurretPID(0.38, 0.0, 0.0) {
   m_turretPID.SetTolerance(1.0);
   m_hoodPID.SetTolerance(1.0);
+  m_poseTurretPID.SetTolerance(2.0);
   UpdateAllianceTagIDs();
 }
 
@@ -24,6 +41,7 @@ void ShootingAutoAim::Initialize() {
   UpdateAllianceTagIDs();
   m_turretPID.Reset();
   m_hoodPID.Reset();
+  m_poseTurretPID.Reset();
   m_lastBestId = -1;
   m_loggedNoTarget = false;
   LimelightHelpers::SetFiducialIDFiltersOverride(m_ll, m_centerIDs);
@@ -33,6 +51,7 @@ void ShootingAutoAim::End() {
   m_lastBestId = -1;
   m_turretPID.Reset();
   m_hoodPID.Reset();
+  m_poseTurretPID.Reset();
 }
 
 bool ShootingAutoAim::HasValidTarget() const {
@@ -42,7 +61,11 @@ bool ShootingAutoAim::HasValidTarget() const {
 void ShootingAutoAim::UpdateAim(ShooterSubsystem& shooter) {
   // Hard fail-safe: no target means both aim axes are stopped.
   if (!LimelightHelpers::getTV(m_ll)) {
-    shooter.StopTurretMotor();
+     if (const auto preAimCmd = ComputePosePreAimTurretCommand(); preAimCmd.has_value()) {
+      shooter.SetTurretPercent(preAimCmd.value());
+    } else {
+      shooter.StopTurretMotor();
+    }
     shooter.StopHoodMotor();
     m_loggedNoTarget = true;
     return;
@@ -82,6 +105,28 @@ void ShootingAutoAim::UpdateAim(ShooterSubsystem& shooter) {
   shooter.SetTurretPercent(turretCmd);
   shooter.SetHoodPercent(hoodCmd);
 }
+
+std::optional<double> ShootingAutoAim::ComputePosePreAimTurretCommand() {
+  const frc::Pose2d pose = m_drive.GetPose();
+
+  const units::meter_t dx = kGoalHubCenter.X() - pose.X();
+  const units::meter_t dy = kGoalHubCenter.Y() - pose.Y();
+  const double distSq = (dx.value() * dx.value()) + (dy.value() * dy.value());
+  if (distSq < 1e-4) {
+    return std::nullopt;
+  }
+
+  const units::radian_t fieldBearing{std::atan2(dy.value(), dx.value())};
+  const units::radian_t robotHeading = pose.Rotation().Radians();
+  const units::radian_t robotRelativeError =
+      frc::AngleModulus(fieldBearing - robotHeading);
+  const double robotRelativeErrorDeg = units::degree_t{robotRelativeError}.value();
+
+  double cmd = m_poseTurretPID.Calculate(0.0, robotRelativeErrorDeg);
+  cmd = std::clamp(cmd, -0.35, 0.35);
+  return cmd;
+}
+
 
 std::optional<int> ShootingAutoAim::SelectBestTag() const {
   auto fiducials = LimelightHelpers::getRawFiducials(m_ll);

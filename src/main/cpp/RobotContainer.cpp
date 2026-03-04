@@ -43,7 +43,8 @@ void LogEvent(const std::string& msg) {
 }
 }  // namespace
 
-RobotContainer::RobotContainer() {
+RobotContainer::RobotContainer()
+    : m_autoAim("limelight", m_drive) {
   // Configure the button bindings
   ConfigureButtonBindings();
 

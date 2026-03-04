@@ -8,10 +8,11 @@
 #include <vector>
 
 class ShooterSubsystem;
+class DriveSubsystem;
 
 class ShootingAutoAim {
  public:
-  explicit ShootingAutoAim(std::string limelightName);
+  ShootingAutoAim(std::string limelightName, DriveSubsystem& drive);
 
   // Apply alliance tag filters and reset aim controllers.
   void Initialize();
@@ -34,12 +35,15 @@ class ShootingAutoAim {
   // Chooses the most reliable visible allowed tag.
   std::optional<int> SelectBestTag() const;
   std::optional<AimOffsets> GetAimOffsets(int tagId) const;
+  std::optional<double> ComputePosePreAimTurretCommand();
 
   std::string m_ll;
+  DriveSubsystem& m_drive;
   std::vector<int> m_centerIDs;
   std::unordered_map<int, AimOffsets> m_targetOffsetsByTag;
   frc::PIDController m_turretPID;
   frc::PIDController m_hoodPID;
+  frc::PIDController m_poseTurretPID;
   int m_lastBestId{-1};
   bool m_loggedNoTarget{false};
 };
