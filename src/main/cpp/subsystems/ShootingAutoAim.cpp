@@ -6,18 +6,55 @@
 
 #include <frc/DriverStation.h>
 #include <frc/MathUtil.h>
+#include <frc/apriltag/AprilTagFieldLayout.h>
 #include <frc/geometry/Translation2d.h>
 #include <units/length.h>
+#include <units/velocity.h>
 
 #include "LimelightHelpers.h"
+#include "shooter/ShotPlanner.h"
 #include "subsystems/DriveSubsystem.h"
 #include "subsystems/ShooterSubsystem.h"
 
 using namespace units::literals;
 
 namespace {
-// 2022 field center hub approximation in WPILib field coordinates.
-constexpr frc::Translation2d kGoalHubCenter{8.27_m, 4.11_m};
+// Initial ballistic model constants; tune on-robot with real release geometry.
+constexpr units::meter_t kGoalCenterOffsetX = 0.595_m;
+constexpr units::meter_t kGoalRelativeHeight = 1.83_m;
+constexpr units::meters_per_second_t kNominalLaunchSpeed = 12.0_mps;
+constexpr bool kPreferHighArc = false;
+
+std::optional<frc::Translation2d> ComputeAllianceGoalCenter(
+    const std::vector<int>& targetTags) {
+  if (targetTags.empty()) {
+    return std::nullopt;
+  }
+
+  const frc::AprilTagFieldLayout fieldLayout = frc::AprilTagFieldLayout::LoadField(
+      frc::AprilTagField::k2026RebuiltWelded);
+
+  units::meter_t sumX = 0_m;
+  units::meter_t sumY = 0_m;
+  int count = 0;
+
+  for (int tagId : targetTags) {
+    const auto tagPose = fieldLayout.GetTagPose(tagId);
+    if (!tagPose.has_value()) {
+      continue;
+    }
+
+    sumX += tagPose->X();
+    sumY += tagPose->Y();
+    ++count;
+  }
+
+  if (count == 0) {
+    return std::nullopt;
+  }
+
+  return frc::Translation2d{sumX / count, sumY / count};
+}
 }
 
 ShootingAutoAim::ShootingAutoAim(std::string limelightName,
@@ -98,19 +135,49 @@ void ShootingAutoAim::UpdateAim(ShooterSubsystem& shooter) {
   // Clamp protects mechanism and prevents aggressive oscillation.
   turretCmd = std::clamp(turretCmd, -0.6, 0.6);
 
-  double hoodCmd = m_hoodPID.Calculate(ty, aimOffsets->tyDeg);
-  // Hood is intentionally clamped tighter than turret to reduce over-correction.
-  hoodCmd = std::clamp(hoodCmd, -0.45, 0.45);
+  // double hoodCmd = m_hoodPID.Calculate(ty, aimOffsets->tyDeg);
+  // // Hood is intentionally clamped tighter than turret to reduce over-correction.
+  // hoodCmd = std::clamp(hoodCmd, -0.45, 0.45);
 
   shooter.SetTurretPercent(turretCmd);
-  shooter.SetHoodPercent(hoodCmd);
+  // shooter.SetHoodPercent(hoodCmd);
+
+    // Use ballistic trajectory solve for hood elevation when distance data is available.
+  bool solvedBallistics = false;
+  for (const auto& f : LimelightHelpers::getRawFiducials(m_ll)) {
+    if (f.id != bestTag.value()) {
+      continue;
+    }
+
+    const units::meter_t x = units::meter_t{f.distToRobot} + kGoalCenterOffsetX;
+    const auto solvedTheta =
+        ShotPlanner::SolveLaunchAngle(x, kGoalRelativeHeight, kNominalLaunchSpeed,
+                                      kPreferHighArc);
+    if (solvedTheta.has_value()) {
+      shooter.SetHoodAngle(solvedTheta.value());
+      solvedBallistics = true;
+    }
+    break;
+  }
+
+  if (!solvedBallistics) {
+    // Fallback to ty PID if ballistic solve is unavailable/unreachable.
+    double hoodCmd = m_hoodPID.Calculate(ty, aimOffsets->tyDeg);
+    hoodCmd = std::clamp(hoodCmd, -0.45, 0.45);
+    shooter.SetHoodPercent(hoodCmd);
+  }
 }
 
 std::optional<double> ShootingAutoAim::ComputePosePreAimTurretCommand() {
   const frc::Pose2d pose = m_drive.GetPose();
 
-  const units::meter_t dx = kGoalHubCenter.X() - pose.X();
-  const units::meter_t dy = kGoalHubCenter.Y() - pose.Y();
+  if (!m_allianceGoalCenter.has_value()) {
+    return std::nullopt;
+  }
+
+  const units::meter_t dx = m_allianceGoalCenter->X() - pose.X();
+  const units::meter_t dy = m_allianceGoalCenter->Y() - pose.Y();
+
   const double distSq = (dx.value() * dx.value()) + (dy.value() * dy.value());
   if (distSq < 1e-4) {
     return std::nullopt;
@@ -171,16 +238,18 @@ void ShootingAutoAim::UpdateAllianceTagIDs() {
   if (alliance && alliance.value() == frc::DriverStation::Alliance::kRed) {
     m_centerIDs = {8, 9, 10, 11, 2, 5};
     m_targetOffsetsByTag = {
-        {18, {.txDeg = 0.0, .tyDeg = -1.0}}, {19, {.txDeg = -0.8, .tyDeg = -0.7}},
-        {20, {.txDeg = 0.6, .tyDeg = -0.9}}, {21, {.txDeg = 0.0, .tyDeg = -0.6}},
-        {24, {.txDeg = -0.4, .tyDeg = -1.2}}, {27, {.txDeg = 0.7, .tyDeg = -1.0}}};
+        {8, {.txDeg = 0.0, .tyDeg = -1.0}}, {9, {.txDeg = 0.8, .tyDeg = -0.7}},
+        {10, {.txDeg = -0.6, .tyDeg = -0.9}}, {11, {.txDeg = 0.0, .tyDeg = -0.6}},
+        {2, {.txDeg = 0.4, .tyDeg = -1.2}}, {5, {.txDeg = -0.7, .tyDeg = -1.0}}};
   } else {
     // Default to blue set when alliance is unavailable.
     // Tune these values on-robot; they are initial aiming offsets only.
     m_centerIDs = {18, 19, 20, 21, 24, 27};
     m_targetOffsetsByTag = {
-        {8, {.txDeg = 0.0, .tyDeg = -1.0}}, {9, {.txDeg = 0.8, .tyDeg = -0.7}},
-        {10, {.txDeg = -0.6, .tyDeg = -0.9}}, {11, {.txDeg = 0.0, .tyDeg = -0.6}},
-        {2, {.txDeg = 0.4, .tyDeg = -1.2}}, {5, {.txDeg = -0.7, .tyDeg = -1.0}}};
+        {18, {.txDeg = 0.0, .tyDeg = -1.0}}, {19, {.txDeg = -0.8, .tyDeg = -0.7}},
+        {20, {.txDeg = 0.6, .tyDeg = -0.9}}, {21, {.txDeg = 0.0, .tyDeg = -0.6}},
+        {24, {.txDeg = -0.4, .tyDeg = -1.2}}, {27, {.txDeg = 0.7, .tyDeg = -1.0}}};
   }
+  
+  m_allianceGoalCenter = ComputeAllianceGoalCenter(m_centerIDs);
 }

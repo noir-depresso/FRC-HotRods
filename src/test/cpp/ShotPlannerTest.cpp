@@ -53,4 +53,22 @@ TEST(ShotPlannerTest, SortsMapBeforeSolving) {
   EXPECT_NEAR(result->flywheelRpm.value(), 4000.0, 1e-9);
 }
 
-}  // namespace
+
+TEST(ShotPlannerTest, SolveLaunchAngleReturnsReachableLowAndHighArcs) {
+  const auto lowArc = ShotPlanner::SolveLaunchAngle(4.0_m, 1.5_m, 10.0_mps, false);
+  const auto highArc = ShotPlanner::SolveLaunchAngle(4.0_m, 1.5_m, 10.0_mps, true);
+
+  ASSERT_TRUE(lowArc.has_value());
+  ASSERT_TRUE(highArc.has_value());
+  EXPECT_LT(lowArc->value(), highArc->value());
+  EXPECT_GT(units::degree_t{*lowArc}.value(), 0.0);
+}
+
+TEST(ShotPlannerTest, SolveLaunchAngleReturnsNullForUnreachableTarget) {
+  const auto unreachable =
+      ShotPlanner::SolveLaunchAngle(9.0_m, 3.5_m, 5.0_mps, false);
+
+  EXPECT_FALSE(unreachable.has_value());
+}
+
+}

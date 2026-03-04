@@ -1,6 +1,7 @@
 #pragma once
 
 #include <frc/controller/PIDController.h>
+#include <frc/geometry/Translation2d.h>
 
 #include <unordered_map>
 #include <optional>
@@ -41,6 +42,7 @@ class ShootingAutoAim {
   DriveSubsystem& m_drive;
   std::vector<int> m_centerIDs;
   std::unordered_map<int, AimOffsets> m_targetOffsetsByTag;
+    std::optional<frc::Translation2d> m_allianceGoalCenter;
   frc::PIDController m_turretPID;
   frc::PIDController m_hoodPID;
   frc::PIDController m_poseTurretPID;
