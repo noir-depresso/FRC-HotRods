@@ -46,9 +46,13 @@ class DriveSubsystem : public frc2::SubsystemBase {
    * @param fieldRelative Whether the provided x and y speeds are relative to
    *                      the field.
    */
+  // Expects normalized joystick-style inputs in [-1, 1].
   void Drive(units::meters_per_second_t xSpeed,
              units::meters_per_second_t ySpeed, units::radians_per_second_t rot,
              bool fieldRelative);
+
+  // Expects real robot-relative chassis speeds (m/s, rad/s).
+  void DriveRobotRelative(const frc::ChassisSpeeds& speeds);
 
   /**
    * Sets the wheels into an X formation to prevent movement.

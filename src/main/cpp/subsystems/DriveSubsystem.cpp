@@ -144,6 +144,22 @@ m_lastRot   = rot.value() * DriveConstants::kMaxAngularSpeed.value();
   m_rearRight.SetDesiredState(br);
 }
 
+void DriveSubsystem::DriveRobotRelative(const frc::ChassisSpeeds& speeds) {
+  auto states = kDriveKinematics.ToSwerveModuleStates(speeds);
+  kDriveKinematics.DesaturateWheelSpeeds(&states, DriveConstants::kMaxSpeed);
+
+  auto [fl, fr, bl, br] = states;
+
+  m_frontLeft.SetDesiredState(fl);
+  m_frontRight.SetDesiredState(fr);
+  m_rearLeft.SetDesiredState(bl);
+  m_rearRight.SetDesiredState(br);
+
+  m_lastXSpeed = speeds.vx.value();
+  m_lastYSpeed = speeds.vy.value();
+  m_lastRot = speeds.omega.value();
+}
+
 void DriveSubsystem::SetX() {
   m_frontLeft.SetDesiredState(
       frc::SwerveModuleState{0_mps, frc::Rotation2d{45_deg}});

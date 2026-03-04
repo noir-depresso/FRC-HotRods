@@ -28,6 +28,7 @@
 #include <pathplanner/lib/config/RobotConfig.h>
 #include <pathplanner/lib/controllers/PPHolonomicDriveController.h>
 #include <frc/DriverStation.h>
+#include <pathplanner/lib/auto/NamedCommands.h>
 
 using namespace DriveConstants;
 
@@ -70,7 +71,7 @@ try {
     fmt::print("Loaded PathPlanner RobotConfig successfully!\n");
 } catch (const std::exception& e) {
     fmt::print("Failed to load RobotConfig from GUI: {}\n", e.what());
-    config = pathplanner::RobotConfig(); // fallback to default safe values
+    //config = pathplanner::RobotConfig(); // fallback to default safe values
 }
 
     pathplanner::AutoBuilder::configure(
@@ -79,6 +80,9 @@ try {
         [this]() { return m_drive.GetRobotRelativeSpeeds(); },
         [this](const frc::ChassisSpeeds& speeds) {
             m_drive.Drive(speeds.vx, speeds.vy, speeds.omega, false);
+            // AutoBuilder gives real robot-relative velocities. Send those
+            // directly to the drivetrain without joystick normalization.
+            m_drive.DriveRobotRelative(speeds);
         },
         std::make_shared<pathplanner::PPHolonomicDriveController>(
             pathplanner::PIDConstants(5.0, 0.0, 0.0),
@@ -88,10 +92,15 @@ try {
         []() {
             auto alliance = frc::DriverStation::GetAlliance();
             return alliance &&
-                   alliance.value() == frc::DriverStation::Alliance::kRed;
+                   alliance.value() == frc::DriverStation::Alliance::kBlue;
         },
         &m_drive
     );
+
+    pathplanner::NamedCommands::registerCommand(
+    "DriveForward",
+    AutoDriveForward(&m_drive, 5_m).ToPtr()
+);
 }
 
 void RobotContainer::ConfigureButtonBindings() {
