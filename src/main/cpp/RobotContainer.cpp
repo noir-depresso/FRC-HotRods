@@ -99,7 +99,7 @@ try {
 
     pathplanner::NamedCommands::registerCommand(
     "DriveForward",
-    AutoDriveForward(&m_drive, 5_m).ToPtr()
+    AutoDriveForward(&m_drive, 5_m).ToPtr().WithTimeout(3_s)
 );
 }
 
