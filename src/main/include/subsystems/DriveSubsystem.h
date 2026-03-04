@@ -36,13 +36,12 @@ class DriveSubsystem : public frc2::SubsystemBase {
   // Subsystem methods go here.
 
   /**
-   * Drives the robot at given x, y and theta speeds. Speeds range from [-1, 1]
-   * and the linear speeds have no effect on the angular speed.
+   * Drives the robot using physical chassis speeds.
    *
    * @param xSpeed        Speed of the robot in the x direction
-   *                      (forward/backwards).
-   * @param ySpeed        Speed of the robot in the y direction (sideways).
-   * @param rot           Angular rate of the robot.
+   *                      (forward/backwards), in m/s.
+   * @param ySpeed        Speed of the robot in the y direction (sideways), in m/s.
+   * @param rot           Angular rate of the robot, in rad/s.
    * @param fieldRelative Whether the provided x and y speeds are relative to
    *                      the field.
    */
@@ -139,8 +138,8 @@ class DriveSubsystem : public frc2::SubsystemBase {
 
   nt::StructPublisher<frc::Pose3d> m_pose3dPub;
 
-      // Last commanded speeds (for simulating odometry in AdvantageScope)
-    double m_lastXSpeed = 0.0;   // meters per second
-    double m_lastYSpeed = 0.0;   // meters per second
-    double m_lastRot   = 0.0;   // radians per second
+  // Last commanded field-frame speeds (for sim visualization integration).
+  double m_lastFieldXSpeed = 0.0;  // meters per second
+  double m_lastFieldYSpeed = 0.0;  // meters per second
+  double m_lastRot = 0.0;          // radians per second
 };

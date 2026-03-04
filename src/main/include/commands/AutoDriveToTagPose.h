@@ -76,18 +76,12 @@ class AutoDriveToTagPose
         m_thetaPid.Calculate(current.Rotation().Degrees().value(),
                              m_goalPose.Rotation().Degrees().value());
 
-    // DriveSubsystem::Drive expects normalized [-1, 1] inputs.
-    const double xNorm = std::clamp(vx / DriveConstants::kMaxSpeed.value(), -1.0, 1.0);
-    const double yNorm = std::clamp(vy / DriveConstants::kMaxSpeed.value(), -1.0, 1.0);
-    const double rotNorm = std::clamp(
-        units::radians_per_second_t{units::degrees_per_second_t{omegaDegPerSec}}.value() /
-            DriveConstants::kMaxAngularSpeed.value(),
-        -1.0,
-        1.0);
+    const auto omega = units::radians_per_second_t{
+        units::degrees_per_second_t{omegaDegPerSec}};
 
-    m_drive->Drive(units::meters_per_second_t{xNorm},
-                   units::meters_per_second_t{yNorm},
-                   units::radians_per_second_t{rotNorm},
+    m_drive->Drive(units::meters_per_second_t{vx},
+                   units::meters_per_second_t{vy},
+                   omega,
                    true);
 
     if (m_xPid.AtSetpoint() && m_yPid.AtSetpoint() && m_thetaPid.AtSetpoint()) {

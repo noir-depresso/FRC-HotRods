@@ -5,7 +5,8 @@
 
 class VisionIOLimelight : public VisionIO {
 public:
-    std::optional<photon::EstimatedRobotPose> GetEstimatedPose(frc::Pose2d /*currentEstimate*/) override {
+    std::optional<photon::EstimatedRobotPose> GetEstimatedPose(frc::Pose2d currentEstimate) override {
+        (void)currentEstimate;
         auto estimate = LimelightHelpers::getBotPoseEstimate_wpiBlue("limelight");
         if (!LimelightHelpers::validPoseEstimate(estimate)) {
             return std::nullopt;

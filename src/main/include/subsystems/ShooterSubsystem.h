@@ -17,6 +17,8 @@ class ShooterSubsystem : public frc2::SubsystemBase {
   void StopDrivingMotors();
   //void StopTurningMotor();
   void SetPercent(double percent);
+  void SetTurnPercent(double percent);
+  void StopTurningMotor();
 
  private:
   rev::spark::SparkMax m_drivingMotor1;

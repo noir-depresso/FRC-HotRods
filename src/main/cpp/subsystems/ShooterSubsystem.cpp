@@ -58,13 +58,23 @@ void ShooterSubsystem::SetPercent(double percent) {
   percent = frc::ApplyDeadband(percent, 0.02);
   percent = std::clamp(percent, -1.0, 1.0);
 
-    //m_drivingMotor1.Set(percent);
-    m_drivingMotor2.Set(percent);
+  m_drivingMotor1.Set(percent);
+  m_drivingMotor2.Set(percent);
 
+}
+
+void ShooterSubsystem::SetTurnPercent(double percent) {
+  percent = frc::ApplyDeadband(percent, 0.02);
+  percent = std::clamp(percent, -1.0, 1.0);
+
+  m_turningMotor.Set(percent);
 }
 
 void ShooterSubsystem::SpinDrivingMotors()  { SetPercent(+0.75); }
 //void ShooterSubsystem::SpinTurningMotor()  { SetPercent(+0.5, 2); }
 // void ShooterSubsystem::Out() { SetPercent(-0.35); } // usually slower outtake
-void ShooterSubsystem::StopDrivingMotors(){ /*m_drivingMotor1.StopMotor();*/ m_drivingMotor2.StopMotor(); }
-//void ShooterSubsystem::StopTurningMotor() { m_turningMotor.StopMotor(); }
+void ShooterSubsystem::StopDrivingMotors() {
+  m_drivingMotor1.StopMotor();
+  m_drivingMotor2.StopMotor();
+}
+void ShooterSubsystem::StopTurningMotor() { m_turningMotor.StopMotor(); }

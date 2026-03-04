@@ -1,5 +1,6 @@
 #include "subsystems/DriveSubsystem.h"
 
+#include <algorithm>
 #include <frc/DriverStation.h>
 #include <frc/RobotBase.h>
 #include <frc/Timer.h>
@@ -25,6 +26,7 @@ using namespace DriveConstants;
 static std::string g_lastLLMessage{};
 static int g_printCounter = 0;
 static units::second_t g_lastVisionResetTime = 0_s;
+static bool g_autoVisionSeeded = false;
 
 DriveSubsystem::DriveSubsystem()
     : m_frontLeft{kFrontLeftDrivingCanId, kFrontLeftTurningCanId,
@@ -59,17 +61,24 @@ void DriveSubsystem::Drive(units::meters_per_second_t xSpeed,
                            units::meters_per_second_t ySpeed,
                            units::radians_per_second_t rot,
                            bool fieldRelative) {
-  // Convert the commanded speeds into the correct units for the drivetrain
-  units::meters_per_second_t xSpeedDelivered =
-      xSpeed.value() * DriveConstants::kMaxSpeed;
-  units::meters_per_second_t ySpeedDelivered =
-      ySpeed.value() * DriveConstants::kMaxSpeed;
-  units::radians_per_second_t rotDelivered =
-      rot.value() * DriveConstants::kMaxAngularSpeed;
+  const units::meters_per_second_t xSpeedDelivered =
+      std::clamp(xSpeed, -DriveConstants::kMaxSpeed, DriveConstants::kMaxSpeed);
+  const units::meters_per_second_t ySpeedDelivered =
+      std::clamp(ySpeed, -DriveConstants::kMaxSpeed, DriveConstants::kMaxSpeed);
+  const units::radians_per_second_t rotDelivered = std::clamp(
+      rot, -DriveConstants::kMaxAngularSpeed, DriveConstants::kMaxAngularSpeed);
 
-m_lastXSpeed = xSpeed.value() * DriveConstants::kMaxSpeed.value();
-m_lastYSpeed = ySpeed.value() * DriveConstants::kMaxSpeed.value();
-m_lastRot   = rot.value() * DriveConstants::kMaxAngularSpeed.value();
+  if (fieldRelative) {
+    m_lastFieldXSpeed = xSpeedDelivered.value();
+    m_lastFieldYSpeed = ySpeedDelivered.value();
+  } else {
+    const frc::ChassisSpeeds fieldSpeeds = frc::ChassisSpeeds::FromRobotRelativeSpeeds(
+        frc::ChassisSpeeds{xSpeedDelivered, ySpeedDelivered, rotDelivered},
+        GetRotation2d());
+    m_lastFieldXSpeed = fieldSpeeds.vx.value();
+    m_lastFieldYSpeed = fieldSpeeds.vy.value();
+  }
+  m_lastRot = rotDelivered.value();
 
   auto states = kDriveKinematics.ToSwerveModuleStates(
       fieldRelative
@@ -168,11 +177,16 @@ void DriveSubsystem::Periodic() {
 
   auto ll = LimelightHelpers::getBotPoseEstimate_wpiBlue_MegaTag2("limelight");
 
+  if (!frc::DriverStation::IsAutonomousEnabled()) {
+    g_autoVisionSeeded = false;
+  }
+
   if (frc::DriverStation::IsAutonomousEnabled() && ll.tagCount > 0) {
     const units::second_t now = frc::Timer::GetFPGATimestamp();
-    if ((now - g_lastVisionResetTime) > 0.10_s) {
+    if (!g_autoVisionSeeded || (now - g_lastVisionResetTime) > 0.50_s) {
       ResetOdometry(ll.pose);
       g_lastVisionResetTime = now;
+      g_autoVisionSeeded = true;
     }
   }
 
@@ -223,8 +237,8 @@ if (frc::RobotBase::IsSimulation()) {
     constexpr double kDt = 0.02;
 
     pose = frc::Pose2d{
-        pose.X() + units::meter_t{m_lastXSpeed * kDt},
-        pose.Y() + units::meter_t{m_lastYSpeed * kDt},
+        pose.X() + units::meter_t{m_lastFieldXSpeed * kDt},
+        pose.Y() + units::meter_t{m_lastFieldYSpeed * kDt},
         pose.Rotation() + frc::Rotation2d{units::radian_t{m_lastRot * kDt}}
     };
 

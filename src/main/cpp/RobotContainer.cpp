@@ -19,12 +19,21 @@
 #include "commands/AutoDriveToTagPose.h"
 #include "commands/AutoDriveToFieldPoseSafe.h"
 #include <frc/RobotBase.h>
+#include <frc/Errors.h>
+#include <fmt/core.h>
 
 #include "io/VisionIO.h"
 #include "io/VisionIOLimelight.h"
 #include "io/VisionIOSim.h"
 
 using namespace DriveConstants;
+
+namespace {
+void LogEvent(const std::string& msg) {
+  fmt::print("{}\n", msg);
+  FRC_ReportWarning("{}", msg);
+}
+}  // namespace
 
 RobotContainer::RobotContainer() {
   // Configure the button bindings
@@ -43,15 +52,29 @@ RobotContainer::RobotContainer() {
   m_drive.SetDefaultCommand(
       frc2::RunCommand(
           [this] {
-            const auto xSpeed = -units::meters_per_second_t{
-                frc::ApplyDeadband(m_driverController.GetRawAxis(1),
-                                  OIConstants::kDriveDeadband)};
-            const auto ySpeed = -units::meters_per_second_t{
-                frc::ApplyDeadband(m_driverController.GetRawAxis(0),
-                                  OIConstants::kDriveDeadband)};
-            const auto rot = -units::radians_per_second_t{
-                frc::ApplyDeadband(m_driverController.GetRawAxis(4),
-                                  OIConstants::kDriveDeadband)};
+            const double xInput = frc::ApplyDeadband(m_driverController.GetRawAxis(1),
+                                                     OIConstants::kDriveDeadband);
+            const double yInput = frc::ApplyDeadband(m_driverController.GetRawAxis(0),
+                                                     OIConstants::kDriveDeadband);
+            const double rotInput = frc::ApplyDeadband(m_driverController.GetRawAxis(4),
+                                                       OIConstants::kDriveDeadband);
+
+            const auto xSpeed = -xInput * DriveConstants::kMaxSpeed;
+            const auto ySpeed = -yInput * DriveConstants::kMaxSpeed;
+            auto rot = -rotInput * DriveConstants::kMaxAngularSpeed;
+
+            if (m_autoAimEnabled) {
+              const auto aimTurn = m_autoAim.GetTurnCommand();
+              if (aimTurn.has_value()) {
+                rot = units::radians_per_second_t{
+                    aimTurn.value() * DriveConstants::kMaxAngularSpeed.value()};
+                m_shooter.SetTurnPercent(aimTurn.value());
+              } else {
+                m_shooter.StopTurningMotor();
+              }
+            } else {
+              m_shooter.StopTurningMotor();
+            }
 
             // Last argument: fieldRelative
             m_drive.Drive(xSpeed, ySpeed, rot, false);
@@ -60,11 +83,20 @@ RobotContainer::RobotContainer() {
 }
 
 void RobotContainer::ConfigureButtonBindings() {
+  frc2::JoystickButton(&m_driverController, 6).OnTrue(new frc2::InstantCommand([this] {
+    LogEvent("Button 6 pressed: X-lock enabled");
+  }));
+
+  frc2::JoystickButton(&m_driverController, 6).OnFalse(new frc2::InstantCommand([this] {
+    LogEvent("Button 6 released: X-lock disabled");
+  }));
+
   frc2::JoystickButton(&m_driverController, 6)
       .WhileTrue(new frc2::RunCommand([this] { m_drive.SetX(); }, {&m_drive}));
 
        // Schedule ExampleCommand when exampleCondition changes to true
  frc2::JoystickButton(&m_driverController, 4).OnTrue(new frc2::InstantCommand([this] {
+    LogEvent("Button 4 pressed: toggling intake");
     m_intakeRunning = !m_intakeRunning;
 
         if (m_intakeRunning)
@@ -74,12 +106,25 @@ void RobotContainer::ConfigureButtonBindings() {
     }));
 
      frc2::JoystickButton(&m_driverController, 1).OnTrue(new frc2::InstantCommand([this] {
+    LogEvent("Button 1 pressed: toggling shooter flywheels");
     m_shooterDriveRunning = !m_shooterDriveRunning;
 
         if (m_shooterDriveRunning)
             m_shooter.SpinDrivingMotors();
         else
             m_shooter.StopDrivingMotors();
+    }));
+
+     frc2::JoystickButton(&m_driverController, 3).OnTrue(new frc2::InstantCommand([this] {
+    LogEvent("Button 3 pressed: toggling auto-aim mode");
+    m_autoAimEnabled = !m_autoAimEnabled;
+
+        if (m_autoAimEnabled)
+            m_autoAim.Initialize();
+        else {
+            m_autoAim.End();
+            m_shooter.StopTurningMotor();
+        }
     }));
 
     //      frc2::JoystickButton(&m_driverController, 2).OnTrue(new frc2::InstantCommand([this] {

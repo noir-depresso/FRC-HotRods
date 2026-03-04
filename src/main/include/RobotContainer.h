@@ -20,6 +20,7 @@
 #include "subsystems/DriveSubsystem.h"
 #include "subsystems/IntakeSubsystem.h"
 #include "subsystems/ShooterSubsystem.h"
+#include "subsystems/ShootingAutoAim.h"
 
 #include <memory>
 #include "io/VisionIO.h"
@@ -52,6 +53,9 @@ DriveSubsystem& GetDriveSubsystem() { return m_drive; }
   bool m_intakeRunning = false;
   bool m_shooterDriveRunning = false;
   bool m_shooterTurnRunning = false;
+  bool m_autoAimEnabled = false;
+
+  ShootingAutoAim m_autoAim{"limelight"};
 
   void ConfigureButtonBindings();
 
