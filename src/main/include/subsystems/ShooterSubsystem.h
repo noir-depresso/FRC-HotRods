@@ -4,18 +4,18 @@
 
 #include <rev/SparkMax.h>
 #include <frc2/command/SubsystemBase.h>
+#include <units/angle.h>
+#include <units/angular_velocity.h>
 
 class ShooterSubsystem : public frc2::SubsystemBase {
-
  public:
   explicit ShooterSubsystem();
 
-  //void In();
-  //void Out();
+  void Periodic() override;
+
+  // Open-loop utility controls
   void SpinDrivingMotors();
-  //void SpinTurningMotor();
   void StopDrivingMotors();
-  //void StopTurningMotor();
   void SetPercent(double percent);
   void SetTurnPercent(double percent);
   void StopTurningMotor();
