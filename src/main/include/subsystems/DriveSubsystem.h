@@ -68,6 +68,11 @@ class DriveSubsystem : public frc2::SubsystemBase {
    */
   void SetModuleStates(wpi::array<frc::SwerveModuleState, 4> desiredStates);
 
+  // Immediate chassis stop + X-lock wheel stance for emergency halt.
+  void ApplyEmergencyStop();
+  bool IsRobotSpeedWithinRange(units::meters_per_second_t minSpeed,
+                               units::meters_per_second_t maxSpeed) const;
+
 
   frc::ChassisSpeeds GetRobotRelativeSpeeds() const;
   

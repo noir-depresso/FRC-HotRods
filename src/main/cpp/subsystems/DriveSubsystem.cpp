@@ -1,6 +1,7 @@
 #include "subsystems/DriveSubsystem.h"
 
 #include <algorithm>
+#include <cmath>
 #include <frc/DriverStation.h>
 #include <frc/RobotBase.h>
 #include <frc/Timer.h>
@@ -160,6 +161,22 @@ void DriveSubsystem::Drive(units::meters_per_second_t xSpeed,
 void DriveSubsystem::DriveRobotRelative(const frc::ChassisSpeeds& speeds) {
   // Single-path implementation: robot-relative speeds are Drive(..., false).
   Drive(speeds.vx, speeds.vy, speeds.omega, false);
+}
+
+void DriveSubsystem::ApplyEmergencyStop() {
+  // Zero commanded chassis motion first, then hold X-lock.
+  Drive(units::meters_per_second_t{0.0}, units::meters_per_second_t{0.0},
+        units::radians_per_second_t{0.0}, false);
+  SetX();
+}
+
+bool DriveSubsystem::IsRobotSpeedWithinRange(
+    units::meters_per_second_t minSpeed,
+    units::meters_per_second_t maxSpeed) const {
+  const auto speeds = GetRobotRelativeSpeeds();
+  const auto planarSpeed = units::meters_per_second_t{
+      std::hypot(speeds.vx.value(), speeds.vy.value())};
+  return planarSpeed >= minSpeed && planarSpeed <= maxSpeed;
 }
 
 void DriveSubsystem::SetX() {

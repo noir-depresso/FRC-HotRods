@@ -19,6 +19,7 @@
 #include "Constants.h"
 #include "subsystems/DriveSubsystem.h"
 #include "subsystems/IntakeSubsystem.h"
+#include "subsystems/IndexerSubsystem.h"
 #include "subsystems/ShooterSubsystem.h"
 #include "subsystems/ShootingAutoAim.h"
 #include "subsystems/PistonSubsystem.h"
@@ -39,29 +40,33 @@ DriveSubsystem& GetDriveSubsystem() { return m_drive; }
   // The driver's controller
   //frc::XboxController m_driverController{OIConstants::kDriverControllerPort};
   frc::GenericHID m_driverController{OIConstants::kDriverControllerPort};
-  bool yButtonDown = m_driverController.GetRawButtonPressed(4);
 
   // The robot's subsystems and commands are defined here...
 
   // The robot's subsystems
   DriveSubsystem m_drive;
   IntakeSubsystem m_intake;
+  IndexerSubsystem m_indexer;
   ShooterSubsystem m_shooter;
   PistonSubsystem m_pistonSubsystem;
 
   // The chooser for the autonomous routines
   frc::SendableChooser<frc2::Command*> m_chooser;
 
-  bool m_intakeRunning = false;
   bool m_shooterDriveRunning = false;
   // bool m_shooterTurnRunning = false;
   bool m_autoAimEnabled = false;
-    bool m_aprilTagDirectionRunning = false;
+  bool m_aprilTagDirectionRunning = false;
+  bool m_intakeRequest = false;
+  bool m_storageRequest = false;
+  bool m_shootFeedRequest = false;
+  bool m_estopRequest = false;
 
   ShootingAutoAim m_autoAim;
 
   void ConfigureButtonBindings();
+  void UpdateSuperstructure();
 
-      // Vision system pointer
-    std::shared_ptr<VisionIO> vision;
+  // Vision system pointer
+  std::shared_ptr<VisionIO> vision;
 };

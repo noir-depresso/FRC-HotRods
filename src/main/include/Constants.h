@@ -58,6 +58,7 @@ constexpr int kFrontRightTurningCanId = 17;
 constexpr int kRearRightTurningCanId = 18;
 
 constexpr int kIntakeCanID = 23; //23
+constexpr int kIndexerCanID = 26;
 
 constexpr int kShooterDriving1 = 21; //21
 constexpr int kShooterDriving2 = 22;
