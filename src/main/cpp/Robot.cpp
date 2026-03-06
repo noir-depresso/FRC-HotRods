@@ -46,7 +46,7 @@ void Robot::AutonomousInit() {
 
   if (m_autonomousCommand) {
     // Schedule exactly once. The scheduler runs in RobotPeriodic.
-    m_autonomousCommand->Schedule();
+    frc2::CommandScheduler::GetInstance().Schedule(m_autonomousCommand->get());
   }
 }
 
