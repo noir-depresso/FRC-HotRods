@@ -227,10 +227,11 @@ void RobotContainer::ConfigureButtonBindings() {
 
 
 
-frc2::CommandPtr RobotContainer::GetAutonomousCommand() {
-  //return new AutoDriveForward(&m_drive, 5_m); // potential issue
-  // Field-goal autonomous using AprilTag-corrected robot pose.
-  // Goal can be any field location (example: near midfield lane).
+// frc2::CommandPtr RobotContainer::GetAutonomousCommand() {
+
+//   return new AutoDriveForward(&m_drive, 5_m); // potential issue
+//   //Field-goal autonomous using AprilTag-corrected robot pose.
+//   Goal can be any field location (example: near midfield lane).
 //   constexpr frc::Pose2d kGoalPose{10.5_m, 1.1_m, 0_deg};
 
 //   // Approximate circular keep-out around center obstacle/goal hub area.
@@ -244,9 +245,10 @@ frc2::CommandPtr RobotContainer::GetAutonomousCommand() {
 //       kObstacleCenter,
 //       kObstacleRadius,
 //       kClearance);
-  const auto alliance = frc::DriverStation::GetAlliance();
-  if (alliance && alliance.value() == frc::DriverStation::Alliance::kRed) {
-    return pathplanner::PathPlannerAuto("Red Auto").ToPtr();
-  }
-  return pathplanner::PathPlannerAuto("Blue Auto").ToPtr();
-}
+// const auto alliance = frc::DriverStation::GetAlliance();
+//   if (alliance && alliance.value() == frc::DriverStation::Alliance::kRed) {
+//     return pathplanner::PathPlannerAuto("Red Auto").ToPtr();
+//   } else {
+//     return pathplanner::PathPlannerAuto("Blue Auto").ToPtr();    
+//   }
+// }
