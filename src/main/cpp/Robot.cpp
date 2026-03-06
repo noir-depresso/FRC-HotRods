@@ -40,13 +40,10 @@ void Robot::DisabledPeriodic() {}
  * RobotContainer} class.
  */
 void Robot::AutonomousInit() {
-  // Pull the selected auto once at mode start. The command may be empty
-  // if chooser setup failed or no auto was selected.
-  m_autonomousCommand = m_container.GetAutonomousCommand();
-
+  // Autonomous is intentionally disabled for this robot configuration.
   if (m_autonomousCommand) {
-    // Schedule exactly once. The scheduler runs in RobotPeriodic.
-    m_autonomousCommand->Schedule();
+    m_autonomousCommand->Cancel();
+    m_autonomousCommand.reset();
   }
 }
 
@@ -79,3 +76,4 @@ void Robot::TestPeriodic() {}
 #ifndef RUNNING_FRC_TESTS
 int main() { return frc::StartRobot<Robot>(); }
 #endif
+
