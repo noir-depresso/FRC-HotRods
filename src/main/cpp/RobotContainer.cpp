@@ -244,6 +244,10 @@ frc2::CommandPtr RobotContainer::GetAutonomousCommand() {
 //       kObstacleCenter,
 //       kObstacleRadius,
 //       kClearance);
-
-return pathplanner::PathPlannerAuto("Auto 2").ToPtr();
+const auto alliance = frc::DriverStation::GetAlliance();
+  if (alliance && alliance.value() == frc::DriverStation::Alliance::kRed) {
+    return pathplanner::PathPlannerAuto("Red Auto").ToPtr();
+  } else {
+    return pathplanner::PathPlannerAuto("Blue Auto").ToPtr();    
+  }
 }
