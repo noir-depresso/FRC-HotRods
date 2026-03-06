@@ -41,21 +41,21 @@ constexpr units::meter_t kWheelBase =
     0.617_m;  // Distance between centers of front and back wheels on robot
 
 // Angular offsets of the modules relative to the chassis in radians
-constexpr double kFrontLeftChassisAngularOffset = 5.648;
-constexpr double kFrontRightChassisAngularOffset = 3.256;
-constexpr double kRearLeftChassisAngularOffset = 4.248;
-constexpr double kRearRightChassisAngularOffset = 3.459;
+constexpr double kFrontLeftChassisAngularOffset = 3.483;
+constexpr double kFrontRightChassisAngularOffset = 4.31;
+constexpr double kRearLeftChassisAngularOffset = 3.262;
+constexpr double kRearRightChassisAngularOffset = 5.629;
 
 // SPARK MAX CAN IDs
-constexpr int kFrontLeftDrivingCanId = 12;
+constexpr int kFrontLeftDrivingCanId = 12; 
 constexpr int kRearLeftDrivingCanId = 11;
 constexpr int kFrontRightDrivingCanId = 13;
 constexpr int kRearRightDrivingCanId = 14;
 
-constexpr int kFrontLeftTurningCanId = 16;
-constexpr int kRearLeftTurningCanId = 15;
-constexpr int kFrontRightTurningCanId = 17;
-constexpr int kRearRightTurningCanId = 18;
+constexpr int kFrontLeftTurningCanId = 16; //12
+constexpr int kRearLeftTurningCanId = 15; //11
+constexpr int kFrontRightTurningCanId = 17; //13
+constexpr int kRearRightTurningCanId = 18; //14
 
 constexpr int kIntakeCanID = 23; //23
 
