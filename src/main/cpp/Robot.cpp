@@ -42,11 +42,10 @@ void Robot::DisabledPeriodic() {}
 void Robot::AutonomousInit() {
   // Autonomous is intentionally disabled for this robot configuration.
   if (m_autonomousCommand) {
-  // Autonomous is intentionally disabled for this robot configuration.
-  if (m_autonomousCommand) {
     // Schedule exactly once. The scheduler runs in RobotPeriodic.
-    m_autonomousCommand->Schedule();
-  }
+    // m_autonomousCommand->Schedule();
+        m_autonomousCommand->Cancel();
+    m_autonomousCommand.reset();
   }
 }
 

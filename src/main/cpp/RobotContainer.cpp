@@ -72,6 +72,14 @@ RobotContainer::RobotContainer()
             const auto xSpeed = -xInput * DriveConstants::kMaxSpeed;
             const auto ySpeed = -yInput * DriveConstants::kMaxSpeed;
             auto rot = -rotInput * DriveConstants::kMaxAngularSpeed;
+            const auto alliance = frc::DriverStation::GetAlliance();
+            const bool isRed =
+                alliance && alliance.value() == frc::DriverStation::Alliance::kRed;
+
+            // Keep driver controls consistent relative to DS side:
+            // on red alliance, invert field-translation commands.
+            const auto xFieldSpeed = isRed ? -xSpeed : xSpeed;
+            const auto yFieldSpeed = isRed ? -ySpeed : ySpeed;
 
             if (m_autoAimEnabled) {
               // Auto-aim controls turret + hood only. Drivetrain rotation stays on driver input.
@@ -82,8 +90,8 @@ RobotContainer::RobotContainer()
               m_shooter.StopHoodMotor();
             }
 
-            // Last argument: fieldRelative
-            m_drive.Drive(xSpeed, ySpeed, rot, false);
+            // Last argument: fieldRelative = true
+            m_drive.Drive(xFieldSpeed, yFieldSpeed, rot, true);
           },
           {&m_drive}));
 
