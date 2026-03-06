@@ -15,7 +15,7 @@
 
 IndexerSubsystem::IndexerSubsystem()
 
-    : m_motor(DriveConstants::kIntakeCanID,
+    : m_motor(DriveConstants::kIndexerCanID,
               rev::spark::SparkMax::MotorType::kBrushless) {
 
   rev::spark::SparkMaxConfig neo20config;
