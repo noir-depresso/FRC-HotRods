@@ -66,6 +66,7 @@ DriveSubsystem& GetDriveSubsystem() { return m_drive; }
 
   void ConfigureButtonBindings();
   void UpdateSuperstructure();
+  void ValidateDriverControllerLayout();
 
   // Vision system pointer
   std::shared_ptr<VisionIO> vision;

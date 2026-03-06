@@ -18,6 +18,7 @@
 #include <pathplanner/lib/controllers/PPHolonomicDriveController.h>
 #include <units/velocity.h>
 
+#include <array>
 #include <fmt/core.h>
 
 #include "Constants.h"
@@ -39,6 +40,7 @@ void LogEvent(const std::string& msg) {
 RobotContainer::RobotContainer()
     : m_autoAim("limelight", m_drive) {
   ConfigureButtonBindings();
+  ValidateDriverControllerLayout();
 
   if (frc::RobotBase::IsSimulation()) {
     vision = std::make_shared<VisionIOSim>();
@@ -194,6 +196,10 @@ void RobotContainer::ConfigureButtonBindings() {
   frc2::JoystickButton(&m_driverController, 11)
       .OnTrue(frc2::InstantCommand([this] {
                 LogEvent("Button 11 pressed: shooter feed request ON");
+                if (m_aprilTagDirectionRunning) {
+                  m_aprilTagDirectionRunning = false;
+                  m_intake.EnableAprilTagDirectionControl(false);
+                }
                 m_shootFeedRequest = true;
                 UpdateSuperstructure();
               }).ToPtr());
@@ -255,11 +261,42 @@ void RobotContainer::ConfigureButtonBindings() {
               }).ToPtr());
 }
 
+void RobotContainer::ValidateDriverControllerLayout() {
+  const int buttonCount = m_driverController.GetButtonCount();
+  const int axisCount = m_driverController.GetAxisCount();
+
+  for (const int button : std::array<int, 12>{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12}) {
+    if (button > buttonCount) {
+      LogEvent(fmt::format("Controller warning: mapped button {} exceeds detected button count {}",
+                           button, buttonCount));
+    }
+  }
+
+  if (buttonCount < 11) {
+    LogEvent("Controller warning: shooter feed request (button 11) is unavailable");
+  }
+  if (buttonCount < 12) {
+    LogEvent("Controller warning: soft E-stop request (button 12) is unavailable on this controller");
+  }
+  if (axisCount <= 4) {
+    LogEvent(fmt::format("Controller warning: rotation axis 4 missing (detected axis count = {})",
+                         axisCount));
+  }
+}
+
 void RobotContainer::UpdateSuperstructure() {
   if (m_estopRequest) {
+    m_autoAimEnabled = false;
+    m_shooterDriveRunning = false;
+    m_intakeRequest = false;
+    m_storageRequest = false;
+    m_shootFeedRequest = false;
+    m_aprilTagDirectionRunning = false;
+    m_autoAim.End();
+    m_intake.EnableAprilTagDirectionControl(false);
     m_intake.Stop();
     m_indexer.Stop();
-    m_shooter.StopDrivingMotors();
+    m_shooter.StopAll();
     return;
   }
 
@@ -282,7 +319,11 @@ void RobotContainer::UpdateSuperstructure() {
     if (!m_pistonSubsystem.IsExtended()) {
       m_pistonSubsystem.Extend();
     }
-    m_intake.In();
+    if (m_intake.IsAprilTagDirectionControlEnabled()) {
+      m_intake.Stop();
+    } else {
+      m_intake.In();
+    }
     m_indexer.FeedToStorage();
     return;
   }
