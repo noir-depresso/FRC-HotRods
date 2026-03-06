@@ -13,6 +13,7 @@ constexpr auto Lerp(double t, double a, double b) {
   return a + (t * (b - a));
 }
 
+
 }  // namespace
 
 std::optional<units::radian_t> ShotPlanner::SolveLaunchAngle(

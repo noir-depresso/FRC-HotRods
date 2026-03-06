@@ -167,7 +167,7 @@ void ShooterSubsystem::SetHoodPercent(double percent) {
 void ShooterSubsystem::SetTurretPercent(double percent) {
   // Turret rotates the whole shooter + camera assembly (horizontal aiming).
   percent = frc::ApplyDeadband(percent, 0.02);
-  percent = std::clamp(percent, -kMaxTurretPercent, kMaxTurretPercent);
+  percent = std::clamp(percent, -1.0, 1.0);
 
   m_turretMotor.Set(percent);
   m_turretClosedLoopActive = false;
@@ -199,7 +199,6 @@ void ShooterSubsystem::StopDrivingMotors() {
   m_drivingMotor2.StopMotor();
   m_flywheelClosedLoopActive = false;
   m_flywheelCommanded = false;
-  m_targetFlywheelRpm = units::revolutions_per_minute_t{0.0};
 }
 
 void ShooterSubsystem::StopHoodMotor() {
