@@ -2,7 +2,9 @@
 
 #include <frc/controller/PIDController.h>
 #include <frc/geometry/Translation2d.h>
+#include <frc/Timer.h>
 #include <units/angle.h>
+#include <units/time.h>
 
 #include <unordered_map>
 #include <optional>
@@ -39,6 +41,8 @@ class ShootingAutoAim {
   std::optional<int> SelectBestTag() const;
   std::optional<AimOffsets> GetAimOffsets(int tagId) const;
   std::optional<units::radian_t> ComputePosePreAimTurretCommand();
+  void RunTurretSearch(ShooterSubsystem& shooter);
+  bool IsSearchDelayElapsed() const;
 
   std::string m_ll;
   DriveSubsystem& m_drive;
@@ -50,7 +54,7 @@ class ShootingAutoAim {
   frc::PIDController m_poseTurretPID;
   int m_lastBestId{-1};
   bool m_loggedNoTarget{false};
-  int m_noTargetCycles{0};
-  bool m_searchCompleted{false};
-  double m_searchAccumulatedDeg{0.0};
+  frc::Timer m_enableTimer;
+  bool m_searchActive{false};
+  double m_searchDirection{1.0};
 };

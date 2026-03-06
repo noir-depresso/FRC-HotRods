@@ -186,6 +186,10 @@ void ShooterSubsystem::NudgeTurretAngle(units::radian_t deltaAngle) {
   SetTurretAngle(units::radian_t{m_turretEncoder.GetPosition()} + deltaAngle);
 }
 
+units::radian_t ShooterSubsystem::GetTurretAngle() const {
+  return units::radian_t{m_turretEncoder.GetPosition()};
+}
+
 void ShooterSubsystem::ZeroTurretEncoder() {
   m_turretEncoder.SetPosition(0.0);
   m_targetTurretAngle = 0_rad;

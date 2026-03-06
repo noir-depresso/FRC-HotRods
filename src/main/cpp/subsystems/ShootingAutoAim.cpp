@@ -8,6 +8,7 @@
 #include <frc/MathUtil.h>
 #include <frc/apriltag/AprilTagFieldLayout.h>
 #include <frc/geometry/Translation2d.h>
+#include <frc/smartdashboard/SmartDashboard.h>
 #include <units/length.h>
 #include <units/velocity.h>
 
@@ -27,6 +28,11 @@ constexpr bool kPreferHighArc = false;
 constexpr auto kHoodVerticalReference = units::degree_t{90.0};
 constexpr auto kHoodForwardLimit = units::degree_t{32.0};
 constexpr auto kTurretStepPerLoop = units::degree_t{1.8}; // speed of turret rotation
+constexpr auto kTurretSearchStepPerLoop = units::degree_t{1.8};
+constexpr auto kTurretSearchMinAngle = units::degree_t{-85.0};
+constexpr auto kTurretSearchMaxAngle = units::degree_t{85.0};
+constexpr auto kSearchReverseBuffer = units::degree_t{0.5};
+constexpr auto kSearchDelay = units::second_t{2.0};
 
 std::optional<frc::Translation2d> ComputeAllianceGoalCenter(
     const std::vector<int>& targetTags) {
@@ -84,6 +90,10 @@ void ShootingAutoAim::Initialize() {
   m_poseTurretPID.Reset();
   m_lastBestId = -1;
   m_loggedNoTarget = false;
+  m_searchActive = false;
+  m_searchDirection = 1.0;
+  m_enableTimer.Reset();
+  m_enableTimer.Start();
   LimelightHelpers::SetFiducialIDFiltersOverride(m_ll, m_centerIDs);
 }
 
@@ -92,6 +102,11 @@ void ShootingAutoAim::End() {
   m_turretPID.Reset();
   m_hoodPID.Reset();
   m_poseTurretPID.Reset();
+  m_loggedNoTarget = false;
+  m_searchActive = false;
+  m_searchDirection = 1.0;
+  m_enableTimer.Stop();
+  m_enableTimer.Reset();
 }
 
 bool ShootingAutoAim::HasValidTarget() const {
@@ -101,17 +116,26 @@ bool ShootingAutoAim::HasValidTarget() const {
 void ShootingAutoAim::UpdateAim(ShooterSubsystem& shooter) {
   // Hard fail-safe: no target means both aim axes are stopped.
   if (!LimelightHelpers::getTV(m_ll)) {
-     if (const auto preAimAngle = ComputePosePreAimTurretCommand(); preAimAngle.has_value()) {
-      shooter.SetTurretAngle(preAimAngle.value());
+    if (!IsSearchDelayElapsed()) {
+      m_searchActive = false;
+      if (const auto preAimAngle = ComputePosePreAimTurretCommand(); preAimAngle.has_value()) {
+        shooter.SetTurretAngle(preAimAngle.value());
+      } else {
+        shooter.StopTurretMotor();
+      }
     } else {
-      shooter.StopTurretMotor();
+      RunTurretSearch(shooter);
     }
     shooter.StopHoodMotor();
     m_loggedNoTarget = true;
+    frc::SmartDashboard::PutBoolean("AutoAim/SearchActive", m_searchActive);
+    frc::SmartDashboard::PutNumber("AutoAim/EnableTimeSec", m_enableTimer.Get().value());
+    frc::SmartDashboard::PutNumber("AutoAim/SearchDirection", m_searchDirection);
     return;
   }
 
   m_loggedNoTarget = false;
+  m_searchActive = false;
 
   const auto bestTag = SelectBestTag();
   if (!bestTag.has_value()) {
@@ -149,6 +173,10 @@ void ShootingAutoAim::UpdateAim(ShooterSubsystem& shooter) {
     hoodCmd = std::clamp(hoodCmd, -0.45, 0.45);
     shooter.SetHoodPercent(hoodCmd);
   }
+
+  frc::SmartDashboard::PutBoolean("AutoAim/SearchActive", m_searchActive);
+  frc::SmartDashboard::PutNumber("AutoAim/EnableTimeSec", m_enableTimer.Get().value());
+  frc::SmartDashboard::PutNumber("AutoAim/SearchDirection", m_searchDirection);
 }
 
 
@@ -264,4 +292,24 @@ void ShootingAutoAim::UpdateAllianceTagIDs() {
   }
 
   m_allianceGoalCenter = ComputeAllianceGoalCenter(m_centerIDs);
+}
+
+bool ShootingAutoAim::IsSearchDelayElapsed() const {
+  return m_enableTimer.HasElapsed(kSearchDelay);
+}
+
+void ShootingAutoAim::RunTurretSearch(ShooterSubsystem& shooter) {
+  m_searchActive = true;
+
+  const auto turretAngle = units::degree_t{shooter.GetTurretAngle()};
+  if (turretAngle >= (kTurretSearchMaxAngle - kSearchReverseBuffer)) {
+    m_searchDirection = -1.0;
+  } else if (turretAngle <= (kTurretSearchMinAngle + kSearchReverseBuffer)) {
+    m_searchDirection = 1.0;
+  }
+
+  const auto step = kTurretSearchStepPerLoop * m_searchDirection;
+  const auto nextTurretAngle = std::clamp(turretAngle + step, kTurretSearchMinAngle,
+                                          kTurretSearchMaxAngle);
+  shooter.SetTurretAngle(units::radian_t{nextTurretAngle});
 }

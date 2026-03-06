@@ -147,6 +147,16 @@ void RobotContainer::ConfigureButtonBindings() {
             m_intake.Stop();
     }).ToPtr());
 
+ frc2::JoystickButton(&m_driverController, 9).OnTrue(frc2::InstantCommand([this] {
+    LogEvent("Button 9 pressed: toggling indexer");
+    m_indexerRunning = !m_indexerRunning;
+
+        if (m_indexerRunning)
+            m_indexer.In();
+        else
+            m_indexer.Stop();
+    }).ToPtr());
+
      frc2::JoystickButton(&m_driverController, 1).OnTrue(frc2::InstantCommand([this] {
     LogEvent("Button 1 pressed: toggling shooter flywheels");
     m_shooterDriveRunning = !m_shooterDriveRunning;

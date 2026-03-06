@@ -29,6 +29,7 @@ class ShooterSubsystem : public frc2::SubsystemBase {
   // Turret closed-loop helpers in turret output angle units.
   void SetTurretAngle(units::radian_t angle);
   void NudgeTurretAngle(units::radian_t deltaAngle);
+  units::radian_t GetTurretAngle() const;
   void ZeroTurretEncoder();
   void StopHoodMotor();
   void StopTurretMotor();

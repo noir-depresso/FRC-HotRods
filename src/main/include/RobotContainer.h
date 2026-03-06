@@ -22,6 +22,7 @@
 #include "subsystems/ShooterSubsystem.h"
 #include "subsystems/ShootingAutoAim.h"
 #include "subsystems/PistonSubsystem.h"
+#include "subsystems/IndexerSubsystem.h"
 
 #include <memory>
 #include "io/VisionIO.h"
@@ -48,6 +49,7 @@ DriveSubsystem& GetDriveSubsystem() { return m_drive; }
   IntakeSubsystem m_intake;
   ShooterSubsystem m_shooter;
   PistonSubsystem m_pistonSubsystem;
+  IndexerSubsystem m_indexer;
 
   // The chooser for the autonomous routines
   frc::SendableChooser<frc2::Command*> m_chooser;
@@ -57,6 +59,7 @@ DriveSubsystem& GetDriveSubsystem() { return m_drive; }
   // bool m_shooterTurnRunning = false;
   bool m_autoAimEnabled = false;
     bool m_aprilTagDirectionRunning = false;
+    bool m_indexerRunning = false;
 
   ShootingAutoAim m_autoAim;
 
