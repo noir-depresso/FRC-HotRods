@@ -228,7 +228,6 @@ void RobotContainer::ConfigureButtonBindings() {
 
 
 // frc2::CommandPtr RobotContainer::GetAutonomousCommand() {
-//  return frc2::CommandPtr{};
 
 //   return new AutoDriveForward(&m_drive, 5_m); // potential issue
 //   //Field-goal autonomous using AprilTag-corrected robot pose.
